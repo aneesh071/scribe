@@ -1,0 +1,92 @@
+<.header>
+  Listing Automations
+  <:actions>
+    <.link patch={~p"/dashboard/automations/new"}>
+      <.button>New Automation</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<ul class="space-y-4 mt-10">
+  <li class="hidden last:block text-center p-12 bg-white rounded-lg shadow-sm border border-slate-100">
+    <p class="text-lg font-medium text-slate-700 mb-2">
+      No automations to display.
+    </p>
+  </li>
+  <li
+    :for={automation <- @automations}
+    id={"automations-#{automation.id}"}
+    class="bg-white shadow rounded-lg p-4 hover:shadow-md transition-shadow duration-200"
+  >
+    <div class="flex flex-col sm:flex-row justify-between sm:items-start">
+      <.link navigate={~p"/dashboard/automations/#{automation}"}>
+        <h3 class="text-xl font-semibold text-indigo-600 mb-1">
+          {automation.name}
+        </h3>
+        <p class="text-sm text-slate-500 mb-2">
+          {automation.platform}
+        </p>
+        <p class="text-sm text-slate-700 mb-2">
+          {automation.description |> String.replace("\n", "<br/>") |> raw()}
+        </p>
+
+        <p class="text-sm text-slate-700 mb-2 line-clamp-3">
+          Example: {automation.example |> String.replace("\n", "<br/>") |> raw()}
+        </p>
+      </.link>
+      <div class="mt-4 sm:mt-0 sm:ml-4 flex-shrink-0">
+        <div class="flex items-center space-x-3">
+          <span class="text-sm font-medium text-slate-700">
+            Active?
+          </span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              class="sr-only peer"
+              checked={automation.is_active}
+              phx-click="toggle_automation"
+              phx-value-id={automation.id}
+            />
+            <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600">
+            </div>
+          </label>
+        </div>
+        <div class="mt-4 flex space-x-2">
+          <.link
+            patch={~p"/dashboard/automations/#{automation}/edit"}
+            class="text-sm text-indigo-600 hover:text-indigo-800"
+          >
+            Edit
+          </.link>
+          <.link
+            phx-click={
+              JS.push("delete", value: %{id: automation.id})
+              |> hide("#automations-#{automation.id}")
+            }
+            data-confirm="Are you sure?"
+            class="text-sm text-red-600 hover:text-red-800"
+          >
+            Delete
+          </.link>
+        </div>
+      </div>
+    </div>
+  </li>
+</ul>
+
+<.modal
+  :if={@live_action in [:new, :edit]}
+  id="automation-modal"
+  show
+  on_cancel={JS.patch(~p"/dashboard/automations")}
+>
+  <.live_component
+    module={SocialScribeWeb.AutomationLive.FormComponent}
+    id={@automation.id || :new}
+    title={@page_title}
+    action={@live_action}
+    automation={@automation}
+    current_user={@current_user}
+    patch={~p"/dashboard/automations"}
+  />
+</.modal>

@@ -1,0 +1,76 @@
+<div class="container mx-auto px-4 py-8 md:py-12">
+  <div class="mb-6">
+    <.link href={~p"/dashboard/automations"} class="text-indigo-600 hover:underline text-sm">
+      &larr; Back to All Automations
+    </.link>
+  </div>
+
+  <div class="bg-white shadow-xl rounded-lg p-6 md:p-8">
+    <div class="flex flex-col sm:flex-row justify-between sm:items-start mb-6">
+      <div>
+        <h1 class="text-3xl md:text-4xl font-bold mb-2 text-slate-800">
+          {@automation.name}
+        </h1>
+        <p class="text-sm text-slate-500">
+          Platform: {@automation.platform}
+        </p>
+      </div>
+      <div class="mt-4 sm:mt-0">
+        <.link
+          patch={~p"/dashboard/automations/#{@automation}/show/edit"}
+          phx-click={JS.push_focus()}
+        >
+          <.button>Edit automation</.button>
+        </.link>
+      </div>
+    </div>
+
+    <div class="space-y-6">
+      <div class="border-t border-slate-100 pt-6">
+        <h2 class="text-xl font-semibold text-slate-700 mb-4">Description</h2>
+        <p class="text-slate-600 whitespace-pre-wrap">{@automation.description}</p>
+      </div>
+
+      <div class="border-t border-slate-100 pt-6">
+        <h2 class="text-xl font-semibold text-slate-700 mb-4">Example</h2>
+        <p class="text-slate-600 whitespace-pre-wrap">{@automation.example}</p>
+      </div>
+
+      <div class="border-t border-slate-100 pt-6">
+        <h2 class="text-xl font-semibold text-slate-700 mb-4">Status</h2>
+        <div class="flex items-center space-x-3">
+          <span class="text-sm font-medium text-slate-700">Active?</span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input
+              id={"automation-#{@automation.id}-checkbox"}
+              type="checkbox"
+              class="sr-only peer"
+              checked={@automation.is_active}
+              phx-click="toggle_automation"
+              phx-value-id={@automation.id}
+            />
+            <div class="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600">
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<.modal
+  :if={@live_action == :edit}
+  id="automation-modal"
+  show
+  on_cancel={JS.patch(~p"/dashboard/automations/#{@automation}")}
+>
+  <.live_component
+    module={SocialScribeWeb.AutomationLive.FormComponent}
+    id={@automation.id}
+    title={@page_title}
+    action={@live_action}
+    automation={@automation}
+    current_user={@current_user}
+    patch={~p"/dashboard/automations/#{@automation}"}
+  />
+</.modal>

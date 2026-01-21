@@ -1,0 +1,73 @@
+<div class="container mx-auto px-4 py-8 md:py-12">
+  <h1 class="text-4xl md:text-5xl font-bold mb-4 text-slate-800 tracking-tight">
+    {@page_title}
+  </h1>
+  <div class="text-lg text-slate-600 mb-10">
+    <p class="leading-relaxed mb-2">
+      Your unified schedule from all connected Google Accounts.
+    </p>
+    <p class="text-sm text-slate-500 italic pl-4 py-1">
+      <.icon name="hero-information-circle" class="w-4 h-4 inline-block mr-1" />
+      Currently we only support Google Calendar's Primary Calendar.
+    </p>
+  </div>
+
+  <div class="space-y-6">
+    <%= if @loading do %>
+      <div class="text-center p-12 bg-white rounded-lg shadow-sm border border-slate-100">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4">
+        </div>
+        <p class="text-lg font-medium text-slate-700 mb-2">
+          Syncing your calendars...
+        </p>
+        <blockquote class="text-sm text-slate-500 italic border-l-2 border-slate-200 pl-4 max-w-md mx-auto">
+          Currently we only support Google Calendar's Primary Calendar.
+        </blockquote>
+      </div>
+    <% end %>
+    <%= if not Enum.empty?(@events) do %>
+      <div :for={event <- @events} class="bg-white  shadow-xl rounded-lg overflow-hidden">
+        <div class="p-5 md:p-6">
+          <div class="flex flex-col sm:flex-row justify-between sm:items-start">
+            <div>
+              <h3 class="text-xl font-semibold text-indigo-600  mb-1">
+                {event.summary}
+              </h3>
+              <p class="text-sm text-slate-500  mb-2">
+                {Timex.format!(event.start_time, "%m/%d/%Y, %H:%M:%S", :strftime)}
+              </p>
+            </div>
+            <div class="mt-4 sm:mt-0 sm:ml-4 flex-shrink-0">
+              <div class="flex items-center space-x-3">
+                <span class="text-sm font-medium text-slate-700 ">
+                  Record Meeting?
+                </span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    class="sr-only peer"
+                    phx-click="toggle_record"
+                    phx-value-id={event.id}
+                    checked={event.record_meeting}
+                  />
+                  <div class="w-11 h-6 bg-gray-200 rounded-full peer  peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600">
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    <%= if Enum.empty?(@events) and not @loading do %>
+      <div class="text-center p-12 bg-white rounded-lg shadow-sm border border-slate-100">
+        <p class="text-lg font-medium text-slate-700 mb-2">
+          No events to display.
+        </p>
+        <p class="text-sm text-slate-500 italic">
+          Connect your calendar to see them here.
+        </p>
+      </div>
+    <% end %>
+  </div>
+</div>

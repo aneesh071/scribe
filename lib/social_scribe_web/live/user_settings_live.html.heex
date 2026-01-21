@@ -1,0 +1,296 @@
+<div class="container mx-auto px-4 py-8 md:py-12 space-y-8">
+  <h1 class="text-3xl md:text-4xl font-bold mb-8 text-slate-800 ">
+    {@page_title}
+  </h1>
+
+  <div class="bg-white shadow-xl rounded-lg p-6 md:p-8">
+    <h2 class="text-2xl font-semibold mb-6 text-slate-700 ">
+      Bot Preferences
+    </h2>
+
+    <.simple_form
+      for={@user_bot_preference_form}
+      phx-change="validate_user_bot_preference"
+      phx-submit="update_user_bot_preference"
+    >
+      <.input
+        field={@user_bot_preference_form[:join_minute_offset]}
+        type="number"
+        label="Join Minute Offset"
+        value={Map.get(@user_bot_preference, :join_minute_offset, 2)}
+      />
+
+      <:actions>
+        <.button type="submit" phx-disable-with="Saving...">Save</.button>
+      </:actions>
+    </.simple_form>
+  </div>
+
+  <div class="bg-white  shadow-xl rounded-lg p-6 md:p-8">
+    <h2 class="text-2xl font-semibold mb-6 text-slate-700 ">
+      Connected Google Accounts
+    </h2>
+
+    <%= if not Enum.empty?(@google_accounts) do %>
+      <ul class="space-y-4 mb-8">
+        <li
+          :for={account <- @google_accounts}
+          class="flex justify-between items-center p-4 bg-slate-50  rounded-md shadow"
+        >
+          <div>
+            <p class="font-medium text-slate-700 ">
+              Google Account
+            </p>
+            <p class="text-sm text-slate-500 ">
+              UID: {account.uid}
+              <%= if account.email do %>
+                ({account.email})
+              <% end %>
+            </p>
+          </div>
+          <!-- Future: Add a "Disconnect" button here -->
+        </li>
+      </ul>
+    <% else %>
+      <p class="mb-8 text-slate-600 ">
+        You haven't connected any Google accounts yet.
+      </p>
+    <% end %>
+
+    <div>
+      <.link
+        href={~p"/auth/google?prompt=select_account%20consent"}
+        method="get"
+        class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 "
+      >
+        <svg
+          class="-ml-1 mr-3 h-5 w-5"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path
+            fill-rule="evenodd"
+            d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V4a2 2 0 00-2-2H6zm1 2h6v2H7V4zm0 4h6v2H7V8zm0 4h6v2H7v-2z"
+            clip-rule="evenodd"
+          />
+          <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM5.121 5.121A6.974 6.974 0 0110 3.05a6.974 6.974 0 014.879 1.928.75.75 0 001.06-1.06A8.474 8.474 0 0010 1.55a8.474 8 0 00-5.94 2.511.75.75 0 001.06 1.06z" />
+        </svg>
+        Connect another Google Account
+      </.link>
+    </div>
+  </div>
+
+  <div class="bg-white  shadow-xl rounded-lg p-6 md:p-8">
+    <h2 class="text-2xl font-semibold mb-6 text-slate-700 ">
+      Connected HubSpot Accounts
+    </h2>
+
+    <%= if not Enum.empty?(@hubspot_accounts) do %>
+      <ul class="space-y-4 mb-8">
+        <li
+          :for={account <- @hubspot_accounts}
+          class="flex justify-between items-center p-4 bg-slate-50  rounded-md shadow"
+        >
+          <div>
+            <p class="font-medium text-slate-700 ">
+              HubSpot Account
+            </p>
+            <p class="text-sm text-slate-500 ">
+              UID: {account.uid}
+              <%= if account.email do %>
+                ({account.email})
+              <% end %>
+            </p>
+          </div>
+          <!-- Future: Add a "Disconnect" button here -->
+        </li>
+      </ul>
+    <% else %>
+      <p class="mb-8 text-slate-600 ">
+        You haven't connected any HubSpot accounts yet.
+      </p>
+    <% end %>
+
+    <div>
+      <.link
+        href={~p"/auth/hubspot"}
+        method="get"
+        class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 "
+      >
+        <svg
+          class="-ml-1 mr-3 h-5 w-5"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path d="M18.164 7.93V5.084a2.198 2.198 0 001.267-1.984v-.066A2.2 2.2 0 0017.231.834h-.066a2.2 2.2 0 00-2.2 2.2v.066c0 .873.517 1.626 1.267 1.984V7.93a6.152 6.152 0 00-3.267 1.643l-6.6-5.133a2.726 2.726 0 00.067-.582A2.726 2.726 0 003.706 1.13a2.726 2.726 0 00-2.726 2.727 2.726 2.726 0 002.726 2.727c.483 0 .938-.126 1.333-.347l6.486 5.047a6.195 6.195 0 00-.556 2.572 6.18 6.18 0 00.56 2.572l-1.57 1.223a2.457 2.457 0 00-1.49-.504 2.468 2.468 0 00-2.468 2.468 2.468 2.468 0 002.468 2.468 2.468 2.468 0 002.468-2.468c0-.29-.05-.568-.142-.826l1.558-1.213a6.2 6.2 0 003.812 1.312 6.2 6.2 0 006.199-6.2 6.2 6.2 0 00-4.2-5.856zm-4.2 9.193a3.337 3.337 0 110-6.674 3.337 3.337 0 010 6.674z"/>
+        </svg>
+        <%= if Enum.empty?(@hubspot_accounts) do %>
+          Connect HubSpot
+        <% else %>
+          Connect another HubSpot Account
+        <% end %>
+      </.link>
+    </div>
+  </div>
+
+  <div class="bg-white  shadow-xl rounded-lg p-6 md:p-8">
+    <h2 class="text-2xl font-semibold mb-6 text-slate-700 ">
+      Connected Facebook Account
+    </h2>
+
+    <%= if not Enum.empty?(@facebook_accounts) do %>
+      <ul class="space-y-4 mb-8">
+        <li
+          :for={account <- @facebook_accounts}
+          class="flex justify-between items-center p-4 bg-slate-50  rounded-md shadow"
+        >
+          <div>
+            <p class="font-medium text-slate-700 ">
+              Facebook Account
+            </p>
+            <p class="text-sm text-slate-500 ">
+              UID: {account.uid}
+              <%= if account.email do %>
+                ({account.email})
+              <% end %>
+            </p>
+          </div>
+
+          <div>
+            <.link
+              patch={~p"/auth/facebook"}
+              class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Refresh Auth
+            </.link>
+
+            <.link
+              patch={~p"/dashboard/settings/facebook_pages"}
+              class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Select Page
+            </.link>
+          </div>
+        </li>
+      </ul>
+    <% else %>
+      <p class="mb-8 text-slate-600 ">
+        You haven't connected any Facebook accounts yet.
+      </p>
+
+      <div>
+        <.link
+          href={~p"/auth/facebook"}
+          method="get"
+          class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          <svg
+            fill="#000000"
+            viewBox="0 0 32 32"
+            class="-ml-1 mr-3 h-5 w-5"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <g stroke-width="0"></g>
+            <g stroke-linecap="round" stroke-linejoin="round"></g>
+            <g>
+              <path d="M21.95 5.005l-3.306-.004c-3.206 0-5.277 2.124-5.277 5.415v2.495H10.05v4.515h3.317l-.004 9.575h4.641l.004-9.575h3.806l-.003-4.514h-3.803v-2.117c0-1.018.241-1.533 1.566-1.533l2.366-.001.01-4.256z">
+              </path>
+            </g>
+          </svg>
+          Connect a Facebook Account
+        </.link>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="bg-white  shadow-xl rounded-lg p-6 md:p-8">
+    <h2 class="text-2xl font-semibold mb-6 text-slate-700 ">
+      Connected LinkedIn Account
+    </h2>
+
+    <%= if not Enum.empty?(@linkedin_accounts) do %>
+      <ul class="space-y-4 mb-8">
+        <li
+          :for={account <- @linkedin_accounts}
+          class="flex justify-between items-center p-4 bg-slate-50  rounded-md shadow"
+        >
+          <div>
+            <p class="font-medium text-slate-700 ">
+              LinkedIn Account
+            </p>
+            <p class="text-sm text-slate-500 ">
+              URN: {account.uid}
+              <%= if account.email do %>
+                ({account.email})
+              <% end %>
+            </p>
+          </div>
+        </li>
+      </ul>
+    <% else %>
+      <p class="mb-8 text-slate-600 ">
+        You haven't connected any LinkedIn accounts yet.
+      </p>
+
+      <div>
+        <.link
+          href={~p"/auth/linkedin"}
+          method="get"
+          class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 "
+        >
+          <svg
+            class="-ml-1 mr-3 h-5 w-5"
+            version="1.1"
+            xmlns="http://www.w3.org/2000/svg"
+            xmlns:xlink="http://www.w3.org/1999/xlink"
+            viewBox="0 0 382 382"
+            xml:space="preserve"
+            fill="#000000"
+          >
+            <g stroke-width="0"></g>
+            <g stroke-linecap="round" stroke-linejoin="round"></g>
+            <g>
+              <path
+                style="fill:#0077B7;"
+                d="M347.445,0H34.555C15.471,0,0,15.471,0,34.555v312.889C0,366.529,15.471,382,34.555,382h312.889 C366.529,382,382,366.529,382,347.444V34.555C382,15.471,366.529,0,347.445,0z M118.207,329.844c0,5.554-4.502,10.056-10.056,10.056 H65.345c-5.554,0-10.056-4.502-10.056-10.056V150.403c0-5.554,4.502-10.056,10.056-10.056h42.806 c5.554,0,10.056,4.502,10.056,10.056V329.844z M86.748,123.432c-22.459,0-40.666-18.207-40.666-40.666S64.289,42.1,86.748,42.1 s40.666,18.207,40.666,40.666S109.208,123.432,86.748,123.432z M341.91,330.654c0,5.106-4.14,9.246-9.246,9.246H286.73 c-5.106,0-9.246-4.14-9.246-9.246v-84.168c0-12.556,3.683-55.021-32.813-55.021c-28.309,0-34.051,29.066-35.204,42.11v97.079 c0,5.106-4.139,9.246-9.246,9.246h-44.426c-5.106,0-9.246-4.14-9.246-9.246V149.593c0-5.106,4.14-9.246,9.246-9.246h44.426 c5.106,0,9.246,4.14,9.246,9.246v15.655c10.497-15.753,26.097-27.912,59.312-27.912c73.552,0,73.131,68.716,73.131,106.472 L341.91,330.654L341.91,330.654z"
+              >
+              </path>
+            </g>
+          </svg>
+          Connect a LinkedIn Account
+        </.link>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<.modal
+  :if={@live_action == :facebook_pages}
+  id="facebook-pages-modal"
+  show
+  on_cancel={JS.patch(~p"/dashboard/settings")}
+>
+  <div>
+    <h2 class="text-2xl font-semibold mb-6 text-slate-700 ">
+      Select a Facebook Page
+    </h2>
+    <.simple_form
+      for={@facebook_page_form}
+      phx-change="validate"
+      phx-submit="select_facebook_page"
+    >
+      <.input
+        type="select"
+        field={@facebook_page_form[:facebook_page]}
+        options={@facebook_page_options}
+      />
+
+      <:actions>
+        <.button type="submit" phx-disable-with="Saving...">Select</.button>
+      </:actions>
+    </.simple_form>
+  </div>
+</.modal>
