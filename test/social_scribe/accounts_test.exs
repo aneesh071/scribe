@@ -552,6 +552,81 @@ defmodule SocialScribe.AccountsTest do
     end
   end
 
+  describe "salesforce credentials" do
+    test "get_user_salesforce_credential/1 returns credential for user" do
+      user = user_fixture()
+      credential = salesforce_credential_fixture(%{user_id: user.id})
+
+      result = Accounts.get_user_salesforce_credential(user.id)
+      assert result.id == credential.id
+      assert result.provider == "salesforce"
+      assert result.instance_url == "https://na1.salesforce.com"
+    end
+
+    test "get_user_salesforce_credential/1 returns nil when no credential" do
+      user = user_fixture()
+      assert Accounts.get_user_salesforce_credential(user.id) == nil
+    end
+
+    test "find_or_create_salesforce_credential/2 creates new credential" do
+      user = user_fixture()
+
+      attrs = %{
+        provider: "salesforce",
+        token: "sf_token",
+        refresh_token: "sf_refresh",
+        uid: "00Dxx0000001gEREAY",
+        email: "advisor@salesforce.com",
+        user_id: user.id,
+        expires_at: DateTime.add(DateTime.utc_now(), 7200, :second),
+        instance_url: "https://na1.salesforce.com"
+      }
+
+      assert {:ok, credential} = Accounts.find_or_create_salesforce_credential(user, attrs)
+      assert credential.provider == "salesforce"
+      assert credential.token == "sf_token"
+      assert credential.instance_url == "https://na1.salesforce.com"
+    end
+
+    test "find_or_create_salesforce_credential/2 updates existing credential" do
+      user = user_fixture()
+      existing = salesforce_credential_fixture(%{user_id: user.id})
+
+      attrs = %{
+        provider: "salesforce",
+        token: "new_sf_token",
+        refresh_token: "new_sf_refresh",
+        uid: existing.uid,
+        email: "advisor@salesforce.com",
+        user_id: user.id,
+        expires_at: DateTime.add(DateTime.utc_now(), 7200, :second),
+        instance_url: "https://na2.salesforce.com"
+      }
+
+      assert {:ok, credential} = Accounts.find_or_create_salesforce_credential(user, attrs)
+      assert credential.id == existing.id
+      assert credential.token == "new_sf_token"
+      assert credential.instance_url == "https://na2.salesforce.com"
+    end
+
+    test "find_or_create_salesforce_credential/2 requires instance_url" do
+      user = user_fixture()
+
+      attrs = %{
+        provider: "salesforce",
+        token: "sf_token",
+        refresh_token: "sf_refresh",
+        uid: "00Dxx0000001gEREAY",
+        email: "advisor@salesforce.com",
+        user_id: user.id,
+        expires_at: DateTime.add(DateTime.utc_now(), 7200, :second)
+      }
+
+      assert {:error, changeset} = Accounts.find_or_create_salesforce_credential(user, attrs)
+      assert %{instance_url: ["can't be blank"]} = errors_on(changeset)
+    end
+  end
+
   describe "facebook_page_credentials" do
     alias SocialScribe.Accounts.FacebookPageCredential
 

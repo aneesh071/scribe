@@ -316,6 +316,31 @@ defmodule SocialScribe.Accounts do
     Repo.get_by(UserCredential, user_id: user_id, provider: "hubspot")
   end
 
+  @doc """
+  Gets the Salesforce credential for a user.
+  """
+  def get_user_salesforce_credential(user_id) do
+    Repo.get_by(UserCredential, user_id: user_id, provider: "salesforce")
+  end
+
+  @doc """
+  Creates or updates a Salesforce credential for a user.
+  Uses `salesforce_changeset/2` which requires `instance_url`.
+  """
+  def find_or_create_salesforce_credential(user, attrs) do
+    case get_user_credential(user, "salesforce", attrs.uid) do
+      nil ->
+        %UserCredential{}
+        |> UserCredential.salesforce_changeset(attrs)
+        |> Repo.insert()
+
+      %UserCredential{} = credential ->
+        credential
+        |> UserCredential.salesforce_changeset(attrs)
+        |> Repo.update()
+    end
+  end
+
   defp get_user_by_oauth_uid(provider, uid) do
     from(c in UserCredential,
       where: c.provider == ^provider and c.uid == ^uid,
