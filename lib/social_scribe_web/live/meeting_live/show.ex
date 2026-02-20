@@ -30,15 +30,13 @@ defmodule SocialScribeWeb.MeetingLive.Show do
 
       {:error, socket}
     else
-      hubspot_credential = Accounts.get_user_hubspot_credential(socket.assigns.current_user.id)
-
       socket =
         socket
         |> assign(:page_title, "Meeting Details: #{meeting.title}")
         |> assign(:meeting, meeting)
         |> assign(:automation_results, automation_results)
         |> assign(:user_has_automations, user_has_automations)
-        |> assign(:hubspot_credential, hubspot_credential)
+        |> assign(:hubspot_credential, nil)
         |> assign(
           :follow_up_email_form,
           to_form(%{
@@ -65,7 +63,9 @@ defmodule SocialScribeWeb.MeetingLive.Show do
 
   @impl true
   def handle_params(_params, _uri, socket) do
-    {:noreply, socket}
+    hubspot_credential = Accounts.get_user_hubspot_credential(socket.assigns.current_user.id)
+
+    {:noreply, assign(socket, :hubspot_credential, hubspot_credential)}
   end
 
   @impl true
