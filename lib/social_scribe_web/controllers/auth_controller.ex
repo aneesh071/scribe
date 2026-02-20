@@ -135,6 +135,52 @@ defmodule SocialScribeWeb.AuthController do
     end
   end
 
+  def callback(%{assigns: %{ueberauth_auth: auth, current_user: user}} = conn, %{
+        "provider" => "salesforce"
+      })
+      when not is_nil(user) do
+    instance_url = auth.credentials.other[:instance_url]
+
+    Logger.info(
+      "Salesforce OAuth callback for user #{user.id}, uid: #{auth.uid}, email: #{auth.info.email}"
+    )
+
+    if is_nil(instance_url) do
+      Logger.error("Salesforce callback missing instance_url for user #{user.id}")
+
+      conn
+      |> put_flash(:error, "Salesforce authorization failed: could not determine instance URL.")
+      |> redirect(to: ~p"/dashboard/settings")
+    else
+      credential_attrs = %{
+        user_id: user.id,
+        provider: "salesforce",
+        uid: to_string(auth.uid),
+        token: auth.credentials.token,
+        refresh_token: auth.credentials.refresh_token,
+        expires_at: DateTime.add(DateTime.utc_now(), 7200, :second),
+        email: auth.info.email,
+        instance_url: instance_url
+      }
+
+      case Accounts.find_or_create_salesforce_credential(user, credential_attrs) do
+        {:ok, _credential} ->
+          Logger.info("Salesforce account connected for user #{user.id}")
+
+          conn
+          |> put_flash(:info, "Salesforce account connected successfully!")
+          |> redirect(to: ~p"/dashboard/settings")
+
+        {:error, reason} ->
+          Logger.error("Failed to save Salesforce credential: #{inspect(reason)}")
+
+          conn
+          |> put_flash(:error, "Could not connect Salesforce account.")
+          |> redirect(to: ~p"/dashboard/settings")
+      end
+    end
+  end
+
   def callback(%{assigns: %{ueberauth_auth: auth}} = conn, _params) do
     Logger.info("Google OAuth Login")
     Logger.info(auth)
