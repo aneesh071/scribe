@@ -474,6 +474,63 @@ defmodule SocialScribeWeb.ModalComponents do
   end
 
   @doc """
+  Renders a collapsible group of suggestion cards with a group-level checkbox.
+
+  ## Examples
+
+      <.suggestion_group name="Contact Info" suggestions={@group_suggestions} expanded={true} />
+  """
+  attr :name, :string, required: true
+  attr :suggestions, :list, required: true
+  attr :theme, :string, default: "hubspot"
+  attr :expanded, :boolean, default: true
+  attr :target, :any, default: nil
+
+  def suggestion_group(assigns) do
+    assigns = assign(assigns, :selected_count, Enum.count(assigns.suggestions, & &1.apply))
+
+    ~H"""
+    <div class={"rounded-lg border border-#{theme_class(@theme, "input")} overflow-hidden"}>
+      <div class="flex items-center justify-between px-4 py-3">
+        <div class="flex items-center gap-3">
+          <input
+            type="checkbox"
+            checked={@selected_count > 0}
+            class={"h-4 w-4 rounded accent-#{theme_class(@theme, "checkbox")}"}
+            phx-click="toggle_group"
+            phx-value-group={@name}
+            phx-target={@target}
+          />
+          <span class="font-medium text-sm text-slate-900">{@name}</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span class={[
+            "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+            "bg-#{theme_class(@theme, "pill")}",
+            "text-#{theme_class(@theme, "pill-text")}"
+          ]}>
+            {@selected_count} update{if @selected_count != 1, do: "s"} selected
+          </span>
+          <button
+            type="button"
+            phx-click="toggle_group_expand"
+            phx-value-group={@name}
+            phx-target={@target}
+            class={"text-sm text-#{theme_class(@theme, "hide")} hover:text-#{theme_class(@theme, "hide-hover")}"}
+          >
+            {if @expanded, do: "Hide details", else: "Show details"}
+          </button>
+        </div>
+      </div>
+
+      <div :if={@expanded} class="border-t border-dashed border-slate-200 px-4 py-3 space-y-4">
+        <.suggestion_card :for={suggestion <- @suggestions} suggestion={suggestion} theme={@theme} />
+      </div>
+    </div>
+    """
+  end
+
+  @doc """
   Renders a success message with checkmark icon.
 
   ## Examples

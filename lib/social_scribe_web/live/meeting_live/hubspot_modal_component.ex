@@ -37,6 +37,7 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
           loading={@loading}
           myself={@myself}
           patch={@patch}
+          expanded_groups={@expanded_groups}
         />
       <% end %>
     </div>
@@ -47,9 +48,20 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
   attr :loading, :boolean, required: true
   attr :myself, :any, required: true
   attr :patch, :string, required: true
+  attr :expanded_groups, :map, required: true
 
   defp suggestions_section(assigns) do
     assigns = assign(assigns, :selected_count, Enum.count(assigns.suggestions, & &1.apply))
+    category_order = ["Contact Info", "Professional Details", "Address", "Social & Web", "Other"]
+
+    assigns =
+      assign(
+        assigns,
+        :grouped,
+        assigns.suggestions
+        |> Enum.group_by(& &1.category)
+        |> Enum.sort_by(fn {cat, _} -> Enum.find_index(category_order, &(&1 == cat)) || 999 end)
+      )
 
     ~H"""
     <div class="space-y-4">
@@ -67,10 +79,13 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
         <% else %>
           <form phx-submit="apply_updates" phx-change="toggle_suggestion" phx-target={@myself}>
             <div class="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-              <.suggestion_card
-                :for={suggestion <- @suggestions}
-                suggestion={suggestion}
+              <.suggestion_group
+                :for={{category, group_suggestions} <- @grouped}
+                name={category}
+                suggestions={group_suggestions}
+                expanded={Map.get(@expanded_groups, category, true)}
                 theme="hubspot"
+                target={@myself}
               />
             </div>
 
@@ -106,6 +121,7 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
       |> assign_new(:searching, fn -> false end)
       |> assign_new(:dropdown_open, fn -> false end)
       |> assign_new(:error, fn -> nil end)
+      |> assign_new(:expanded_groups, fn -> %{} end)
 
     {:ok, socket}
   end
@@ -194,8 +210,30 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
        dropdown_open: false,
        contacts: [],
        query: "",
-       error: nil
+       error: nil,
+       expanded_groups: %{}
      )}
+  end
+
+  @impl true
+  def handle_event("toggle_group", %{"group" => group_name}, socket) do
+    group_suggestions =
+      Enum.filter(socket.assigns.suggestions, &(&1.category == group_name))
+
+    all_applied = Enum.all?(group_suggestions, & &1.apply)
+
+    updated =
+      Enum.map(socket.assigns.suggestions, fn s ->
+        if s.category == group_name, do: %{s | apply: !all_applied}, else: s
+      end)
+
+    {:noreply, assign(socket, suggestions: updated)}
+  end
+
+  @impl true
+  def handle_event("toggle_group_expand", %{"group" => group_name}, socket) do
+    expanded = Map.update(socket.assigns.expanded_groups, group_name, false, &(!&1))
+    {:noreply, assign(socket, expanded_groups: expanded)}
   end
 
   @impl true

@@ -8,6 +8,24 @@ defmodule SocialScribe.HubspotSuggestions do
   alias SocialScribe.HubspotApi
   alias SocialScribe.Accounts.UserCredential
 
+  @field_categories %{
+    "firstname" => "Contact Info",
+    "lastname" => "Contact Info",
+    "email" => "Contact Info",
+    "phone" => "Contact Info",
+    "mobilephone" => "Contact Info",
+    "company" => "Professional Details",
+    "jobtitle" => "Professional Details",
+    "address" => "Address",
+    "city" => "Address",
+    "state" => "Address",
+    "zip" => "Address",
+    "country" => "Address",
+    "website" => "Social & Web",
+    "linkedin_url" => "Social & Web",
+    "twitter_handle" => "Social & Web"
+  }
+
   @field_labels %{
     "firstname" => "First Name",
     "lastname" => "Last Name",
@@ -49,6 +67,7 @@ defmodule SocialScribe.HubspotSuggestions do
           %{
             field: field,
             label: Map.get(@field_labels, field, field),
+            category: Map.get(@field_categories, field, "Other"),
             current_value: current_value,
             new_value: suggestion.value,
             context: suggestion.context,
@@ -75,6 +94,7 @@ defmodule SocialScribe.HubspotSuggestions do
             %{
               field: suggestion.field,
               label: Map.get(@field_labels, suggestion.field, suggestion.field),
+              category: Map.get(@field_categories, suggestion.field, "Other"),
               current_value: nil,
               new_value: suggestion.value,
               context: Map.get(suggestion, :context),
@@ -98,7 +118,12 @@ defmodule SocialScribe.HubspotSuggestions do
     Enum.map(suggestions, fn suggestion ->
       current_value = get_contact_field(contact, suggestion.field)
 
-      %{suggestion | current_value: current_value, has_change: current_value != suggestion.new_value, apply: true}
+      %{
+        suggestion
+        | current_value: current_value,
+          has_change: current_value != suggestion.new_value,
+          apply: true
+      }
     end)
     |> Enum.filter(fn s -> s.has_change end)
   end
