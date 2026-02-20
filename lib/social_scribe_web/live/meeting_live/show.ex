@@ -50,11 +50,13 @@ defmodule SocialScribeWeb.MeetingLive.Show do
 
   @impl true
   def handle_params(%{"automation_result_id" => automation_result_id}, _uri, socket) do
+    hubspot_credential = Accounts.get_user_hubspot_credential(socket.assigns.current_user.id)
     automation_result = Automations.get_automation_result!(automation_result_id)
     automation = Automations.get_automation!(automation_result.automation_id)
 
     socket =
       socket
+      |> assign(:hubspot_credential, hubspot_credential)
       |> assign(:automation_result, automation_result)
       |> assign(:automation, automation)
 
