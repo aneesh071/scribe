@@ -24,7 +24,7 @@ All Salesforce API assumptions verified against official documentation. Key fixe
 | 4 | Critical | DB queries in `mount/3` (Phoenix anti-pattern — mount called twice) | Added Task 5: move credential loading to `handle_params/3`; Task 14 also loads credentials in handle_params |
 | 5 | Critical | Wrong project path (`/Users/aneeshnp/Jump/scribe`) | Fixed to `/Users/aneeshnp/Documents/Jump/scribe` |
 | 6 | Medium | Shared components need theming for multi-CRM | Addressed in Task 3 with theme prop parameterization |
-| 7 | Medium | Non-functional "Hide details" and "Update mapping" buttons | Addressed in Task 4 with working expand/collapse; "Update mapping" retained as placeholder per original design |
+| 7 | Medium | Non-functional "Hide details" and "Update mapping" buttons | Addressed in Task 4 with working expand/collapse; card-level "Hide details", "Update mapping", and "1 update selected" badge removed (dead UI — group-level handles expand/collapse and count) |
 | 8 | Medium | Test gaps (no auth controller tests) | Added auth controller test in Task 15 Step 0 |
 | 9 | Medium | SOQL escaping only handles single quotes | Added `escape_soql_string/1` helper that escapes both `\` and `'` |
 | 10 | Low | PATCH should handle both 200 and 204 | Fixed: `status in [200, 204]` match |

@@ -182,7 +182,7 @@ HubSpot has the most sophisticated integration and serves as the **reference pat
 - **Proactive refresh** — `Workers.HubspotTokenRefresher` cron worker refreshes tokens expiring within 10 minutes
 - **AI suggestions** — `HubspotSuggestions.generate_suggestions/3` fetches contact from HubSpot, sends transcript to Gemini, merges AI suggestions with current contact values
 - **UI modal** — `HubspotModalComponent` is a multi-step live component (`:search` → `:suggestions`) with contact search, AI suggestion cards with checkboxes, selective field updates
-- **Reusable UI components** — `ModalComponents` module has CRM-agnostic components: `contact_select`, `suggestion_card`, `value_comparison`, `avatar`, `modal_footer`
+- **Reusable UI components** — `ModalComponents` module has CRM-agnostic components: `crm_modal`, `contact_select`, `suggestion_card`, `suggestion_group`, `avatar`, `modal_footer`, `empty_state`, `inline_error`
 
 #### Salesforce (Complete)
 
@@ -254,7 +254,7 @@ Two `on_mount` hooks on all `/dashboard` routes:
 ### Components
 
 - `Sidebar` — navigation with active state detection from `:current_path` assign
-- `ModalComponents` — reusable CRM modal UI: `hubspot_modal`, `salesforce_modal`, `contact_select`, `suggestion_card`, `value_comparison`, `avatar`, `modal_footer` (shared components use `theme` prop for HubSpot/Salesforce color switching)
+- `ModalComponents` — reusable CRM modal UI: `crm_modal`, `contact_select`, `suggestion_card`, `suggestion_group`, `avatar`, `modal_footer`, `empty_state`, `inline_error` (shared components use `theme` prop for HubSpot/Salesforce color switching)
 - `ClipboardButton` — live component using JS hook for clipboard copy with visual feedback
 - `PlatformLogo` — detects Google Meet vs Zoom from meeting URL
 

@@ -1,6 +1,18 @@
 defmodule Ueberauth.Strategy.Salesforce do
   @moduledoc """
   Salesforce Strategy for Ueberauth.
+
+  Implements OAuth 2.0 authorization code flow against Salesforce's
+  login.salesforce.com endpoints. Extracts `instance_url` from the token
+  response for use as the per-org base URL for all subsequent API calls.
+
+  ## Configuration
+
+      config :ueberauth, Ueberauth.Strategy.Salesforce.OAuth,
+        client_id: System.get_env("SALESFORCE_CLIENT_ID"),
+        client_secret: System.get_env("SALESFORCE_CLIENT_SECRET")
+
+  Default scope: `"api refresh_token"`.
   """
 
   use Ueberauth.Strategy,
