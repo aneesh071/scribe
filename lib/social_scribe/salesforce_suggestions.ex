@@ -5,6 +5,7 @@ defmodule SocialScribe.SalesforceSuggestions do
   """
 
   alias SocialScribe.AIContentGeneratorApi
+  alias SocialScribe.Salesforce.Fields
 
   @field_labels %{
     "FirstName" => "First Name",
@@ -19,23 +20,6 @@ defmodule SocialScribe.SalesforceSuggestions do
     "MailingState" => "Mailing State",
     "MailingPostalCode" => "Mailing Postal Code",
     "MailingCountry" => "Mailing Country"
-  }
-
-  # Maps Salesforce PascalCase field names to internal contact atom keys
-  # These must match the keys from SalesforceApi.format_contact/1
-  @field_to_contact_key %{
-    "FirstName" => :firstname,
-    "LastName" => :lastname,
-    "Email" => :email,
-    "Phone" => :phone,
-    "MobilePhone" => :mobilephone,
-    "Title" => :jobtitle,
-    "Department" => :department,
-    "MailingStreet" => :address,
-    "MailingCity" => :city,
-    "MailingState" => :state,
-    "MailingPostalCode" => :zip,
-    "MailingCountry" => :country
   }
 
   # Category grouping for UI display (matches reference design)
@@ -54,6 +38,9 @@ defmodule SocialScribe.SalesforceSuggestions do
     "MailingCountry" => "Mailing Address"
   }
 
+  # Allowlist derived from @field_labels — guards against AI-hallucinated field names
+  @allowed_fields MapSet.new(Map.keys(@field_labels))
+
   @doc """
   Generates suggestions from a meeting transcript without contact data.
   Called first, then merged with contact after selection.
@@ -63,6 +50,7 @@ defmodule SocialScribe.SalesforceSuggestions do
       {:ok, ai_suggestions} ->
         suggestions =
           ai_suggestions
+          |> Enum.filter(fn suggestion -> MapSet.member?(@allowed_fields, suggestion.field) end)
           |> Enum.map(fn suggestion ->
             %{
               field: suggestion.field,
@@ -91,7 +79,7 @@ defmodule SocialScribe.SalesforceSuggestions do
   def merge_with_contact(suggestions, contact) when is_list(suggestions) do
     suggestions
     |> Enum.map(fn suggestion ->
-      contact_key = Map.get(@field_to_contact_key, suggestion.field)
+      contact_key = Map.get(Fields.field_mapping(), suggestion.field)
       current_value = if contact_key, do: Map.get(contact, contact_key), else: nil
 
       %{

@@ -6,7 +6,7 @@ defmodule SocialScribe.AIContentGenerator do
   alias SocialScribe.Meetings
   alias SocialScribe.Automations
 
-  @gemini_model "gemini-2.0-flash-lite"
+  @gemini_model "gemini-2.0-flash"
   @gemini_api_base_url "https://generativelanguage.googleapis.com/v1beta/models"
 
   @impl SocialScribe.AIContentGeneratorApi
@@ -121,6 +121,7 @@ defmodule SocialScribe.AIContentGenerator do
         - Physical address details (MailingStreet, MailingCity, MailingState, MailingPostalCode, MailingCountry)
 
         IMPORTANT: Only extract information that is EXPLICITLY mentioned in the transcript. Do not infer or guess.
+        IMPORTANT: When extracting any address fields (MailingStreet, MailingCity, MailingState, MailingPostalCode), you MUST also include a MailingCountry field. Infer the country from context (e.g., US state names like Oregon, California imply "United States"). Always use full country names (e.g., "United States" not "US", "United Kingdom" not "UK").
 
         The transcript includes timestamps in [MM:SS] format at the start of each line.
 
@@ -154,7 +155,13 @@ defmodule SocialScribe.AIContentGenerator do
     end
   end
 
-  defp parse_salesforce_suggestions(response) do
+  defp parse_salesforce_suggestions(response), do: parse_crm_suggestions(response)
+  defp parse_hubspot_suggestions(response), do: parse_crm_suggestions(response)
+
+  # Shared parser for CRM suggestion responses from Gemini.
+  # Both HubSpot and Salesforce use the same JSON format:
+  # [%{"field" => "...", "value" => "...", "context" => "...", "timestamp" => "..."}]
+  defp parse_crm_suggestions(response) do
     cleaned =
       response
       |> String.trim()
@@ -183,41 +190,6 @@ defmodule SocialScribe.AIContentGenerator do
         {:ok, []}
 
       {:error, _} ->
-        {:ok, []}
-    end
-  end
-
-  defp parse_hubspot_suggestions(response) do
-    # Clean up the response - remove markdown code blocks if present
-    cleaned =
-      response
-      |> String.trim()
-      |> String.replace(~r/^```json\n?/, "")
-      |> String.replace(~r/\n?```$/, "")
-      |> String.trim()
-
-    case Jason.decode(cleaned) do
-      {:ok, suggestions} when is_list(suggestions) ->
-        formatted =
-          suggestions
-          |> Enum.filter(&is_map/1)
-          |> Enum.map(fn s ->
-            %{
-              field: s["field"],
-              value: s["value"],
-              context: s["context"],
-              timestamp: s["timestamp"]
-            }
-          end)
-          |> Enum.filter(fn s -> s.field != nil and s.value != nil end)
-
-        {:ok, formatted}
-
-      {:ok, _} ->
-        {:ok, []}
-
-      {:error, _} ->
-        # If JSON parsing fails, return empty suggestions
         {:ok, []}
     end
   end
