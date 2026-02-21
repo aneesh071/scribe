@@ -3,7 +3,7 @@ defmodule SocialScribeWeb.MeetingLive.Show do
 
   import SocialScribeWeb.PlatformLogo
   import SocialScribeWeb.ClipboardButton
-  import SocialScribeWeb.ModalComponents, only: [hubspot_modal: 1, salesforce_modal: 1]
+  import SocialScribeWeb.ModalComponents, only: [crm_modal: 1]
 
   alias SocialScribe.Meetings
   alias SocialScribe.Automations
@@ -14,74 +14,86 @@ defmodule SocialScribeWeb.MeetingLive.Show do
   alias SocialScribe.SalesforceSuggestions
 
   @impl true
-  def mount(%{"id" => meeting_id}, _session, socket) do
+  def mount(_params, _session, socket) do
+    {:ok,
+     socket
+     |> assign(:page_title, "Meeting Details")
+     |> assign(:meeting, nil)
+     |> assign(:automation_results, [])
+     |> assign(:user_has_automations, false)
+     |> assign(:hubspot_credential, nil)
+     |> assign(:salesforce_credential, nil)
+     |> assign(:last_salesforce_contact, nil)
+     |> assign(:last_hubspot_contact, nil)
+     |> assign(:follow_up_email_form, to_form(%{"follow_up_email" => ""}))}
+  end
+
+  @impl true
+  def handle_params(%{"id" => meeting_id} = params, _uri, socket) do
     meeting = Meetings.get_meeting_with_details(meeting_id)
 
-    user_has_automations =
-      Automations.list_active_user_automations(socket.assigns.current_user.id)
-      |> length()
-      |> Kernel.>(0)
+    cond do
+      is_nil(meeting) ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Meeting not found.")
+         |> redirect(to: ~p"/dashboard/meetings")}
 
-    automation_results = Automations.list_automation_results_for_meeting(meeting_id)
+      meeting.calendar_event.user_id != socket.assigns.current_user.id ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "You do not have permission to view this meeting.")
+         |> redirect(to: ~p"/dashboard/meetings")}
 
-    if meeting.calendar_event.user_id != socket.assigns.current_user.id do
-      socket =
-        socket
-        |> put_flash(:error, "You do not have permission to view this meeting.")
-        |> redirect(to: ~p"/dashboard/meetings")
+      true ->
+        user_has_automations =
+          Automations.list_active_user_automations(socket.assigns.current_user.id)
+          |> length()
+          |> Kernel.>(0)
 
-      {:error, socket}
-    else
-      socket =
-        socket
-        |> assign(:page_title, "Meeting Details: #{meeting.title}")
-        |> assign(:meeting, meeting)
-        |> assign(:automation_results, automation_results)
-        |> assign(:user_has_automations, user_has_automations)
-        |> assign(:hubspot_credential, nil)
-        |> assign(:salesforce_credential, nil)
-        |> assign(
-          :follow_up_email_form,
-          to_form(%{
-            "follow_up_email" => ""
-          })
-        )
+        automation_results = Automations.list_automation_results_for_meeting(meeting_id)
 
-      {:ok, socket}
+        hubspot_credential =
+          Accounts.get_user_hubspot_credential(socket.assigns.current_user.id)
+
+        salesforce_credential =
+          Accounts.get_user_salesforce_credential(socket.assigns.current_user.id)
+
+        socket =
+          socket
+          |> assign(:page_title, "Meeting Details: #{meeting.title}")
+          |> assign(:meeting, meeting)
+          |> assign(:automation_results, automation_results)
+          |> assign(:user_has_automations, user_has_automations)
+          |> assign(:hubspot_credential, hubspot_credential)
+          |> assign(:salesforce_credential, salesforce_credential)
+
+        socket = apply_automation_result(socket, params)
+
+        {:noreply, socket}
     end
   end
 
-  @impl true
-  def handle_params(%{"automation_result_id" => automation_result_id}, _uri, socket) do
-    hubspot_credential = Accounts.get_user_hubspot_credential(socket.assigns.current_user.id)
-
-    salesforce_credential =
-      Accounts.get_user_salesforce_credential(socket.assigns.current_user.id)
-
+  defp apply_automation_result(socket, %{"automation_result_id" => automation_result_id}) do
     automation_result = Automations.get_automation_result!(automation_result_id)
-    automation = Automations.get_automation!(automation_result.automation_id)
 
-    socket =
+    if automation_result.meeting_id != socket.assigns.meeting.id do
       socket
-      |> assign(:hubspot_credential, hubspot_credential)
-      |> assign(:salesforce_credential, salesforce_credential)
+      |> put_flash(:error, "You do not have permission to view this automation result.")
+      |> push_patch(to: ~p"/dashboard/meetings/#{socket.assigns.meeting}")
+    else
+      automation = Automations.get_automation!(automation_result.automation_id)
+
+      socket
       |> assign(:automation_result, automation_result)
       |> assign(:automation, automation)
-
-    {:noreply, socket}
+    end
   end
 
-  @impl true
-  def handle_params(_params, _uri, socket) do
-    hubspot_credential = Accounts.get_user_hubspot_credential(socket.assigns.current_user.id)
-
-    salesforce_credential =
-      Accounts.get_user_salesforce_credential(socket.assigns.current_user.id)
-
-    {:noreply,
-     socket
-     |> assign(:hubspot_credential, hubspot_credential)
-     |> assign(:salesforce_credential, salesforce_credential)}
+  defp apply_automation_result(socket, _params) do
+    socket
+    |> assign(:automation_result, nil)
+    |> assign(:automation, nil)
   end
 
   @impl true
@@ -106,7 +118,7 @@ defmodule SocialScribeWeb.MeetingLive.Show do
       {:error, reason} ->
         send_update(SocialScribeWeb.MeetingLive.HubspotModalComponent,
           id: "hubspot-modal",
-          error: "Failed to search contacts: #{inspect(reason)}",
+          error: "Failed to search contacts. #{friendly_error_message(reason)}",
           searching: false
         )
     end
@@ -116,9 +128,11 @@ defmodule SocialScribeWeb.MeetingLive.Show do
 
   @impl true
   def handle_info({:generate_suggestions, contact, meeting, _credential}, socket) do
+    socket = assign(socket, :last_hubspot_contact, contact)
+
     case HubspotSuggestions.generate_suggestions_from_meeting(meeting) do
       {:ok, suggestions} ->
-        merged = HubspotSuggestions.merge_with_contact(suggestions, normalize_contact(contact))
+        merged = HubspotSuggestions.merge_with_contact(suggestions, contact)
 
         send_update(SocialScribeWeb.MeetingLive.HubspotModalComponent,
           id: "hubspot-modal",
@@ -130,7 +144,7 @@ defmodule SocialScribeWeb.MeetingLive.Show do
       {:error, reason} ->
         send_update(SocialScribeWeb.MeetingLive.HubspotModalComponent,
           id: "hubspot-modal",
-          error: "Failed to generate suggestions: #{inspect(reason)}",
+          error: "Failed to generate suggestions. #{friendly_error_message(reason)}",
           loading: false
         )
     end
@@ -144,6 +158,7 @@ defmodule SocialScribeWeb.MeetingLive.Show do
       {:ok, _updated_contact} ->
         socket =
           socket
+          |> assign(:last_hubspot_contact, contact)
           |> put_flash(:info, "Successfully updated #{map_size(updates)} field(s) in HubSpot")
           |> push_patch(to: ~p"/dashboard/meetings/#{socket.assigns.meeting}")
 
@@ -152,7 +167,7 @@ defmodule SocialScribeWeb.MeetingLive.Show do
       {:error, reason} ->
         send_update(SocialScribeWeb.MeetingLive.HubspotModalComponent,
           id: "hubspot-modal",
-          error: "Failed to update contact: #{inspect(reason)}",
+          error: "Failed to update contact. #{friendly_error_message(reason)}",
           loading: false
         )
 
@@ -173,7 +188,7 @@ defmodule SocialScribeWeb.MeetingLive.Show do
       {:error, reason} ->
         send_update(SocialScribeWeb.MeetingLive.SalesforceModalComponent,
           id: "salesforce-modal",
-          error: "Failed to search contacts: #{inspect(reason)}",
+          error: "Failed to search contacts. #{friendly_error_message(reason)}",
           searching: false
         )
     end
@@ -183,6 +198,8 @@ defmodule SocialScribeWeb.MeetingLive.Show do
 
   @impl true
   def handle_info({:generate_salesforce_suggestions, contact, meeting, _credential}, socket) do
+    socket = assign(socket, :last_salesforce_contact, contact)
+
     case SalesforceSuggestions.generate_suggestions_from_meeting(meeting) do
       {:ok, suggestions} ->
         merged = SalesforceSuggestions.merge_with_contact(suggestions, contact)
@@ -197,7 +214,7 @@ defmodule SocialScribeWeb.MeetingLive.Show do
       {:error, reason} ->
         send_update(SocialScribeWeb.MeetingLive.SalesforceModalComponent,
           id: "salesforce-modal",
-          error: "Failed to generate suggestions: #{inspect(reason)}",
+          error: "Failed to generate suggestions. #{friendly_error_message(reason)}",
           loading: false
         )
     end
@@ -211,6 +228,7 @@ defmodule SocialScribeWeb.MeetingLive.Show do
       {:ok, _} ->
         socket =
           socket
+          |> assign(:last_salesforce_contact, contact)
           |> put_flash(:info, "Successfully updated #{map_size(updates)} field(s) in Salesforce")
           |> push_patch(to: ~p"/dashboard/meetings/#{socket.assigns.meeting}")
 
@@ -219,7 +237,7 @@ defmodule SocialScribeWeb.MeetingLive.Show do
       {:error, reason} ->
         send_update(SocialScribeWeb.MeetingLive.SalesforceModalComponent,
           id: "salesforce-modal",
-          error: "Failed to update contact: #{inspect(reason)}",
+          error: "Failed to update contact. #{friendly_error_message(reason)}",
           loading: false
         )
 
@@ -227,10 +245,26 @@ defmodule SocialScribeWeb.MeetingLive.Show do
     end
   end
 
-  defp normalize_contact(contact) do
-    # Contact is already formatted with atom keys from HubspotApi.format_contact
-    contact
-  end
+  defp friendly_error_message({:api_error, status, _body}) when status in [429, 503],
+    do: "Service temporarily unavailable. Please try again in a moment."
+
+  defp friendly_error_message({:api_error, 401, _body}),
+    do: "Authentication expired. Please reconnect your account in Settings."
+
+  defp friendly_error_message({:api_error, 400, _body}),
+    do: "The request was invalid. Please check your data and try again."
+
+  defp friendly_error_message({:api_error, status, _body}) when status >= 500,
+    do: "The external service encountered an error. Please try again."
+
+  defp friendly_error_message({:api_error, _status, _body}),
+    do: "An unexpected error occurred. Please try again."
+
+  defp friendly_error_message(:api_timeout),
+    do: "The request timed out. Please try again."
+
+  defp friendly_error_message(_reason),
+    do: "An unexpected error occurred. Please try again."
 
   defp format_duration(nil), do: "N/A"
 

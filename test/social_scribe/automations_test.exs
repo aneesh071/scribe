@@ -29,11 +29,6 @@ defmodule SocialScribe.AutomationsTest do
       assert Automations.list_active_user_automations(user.id) == [automation_1, automation_2]
     end
 
-    test "list_automations/0 returns all automations" do
-      automation = automation_fixture()
-      assert Automations.list_automations() == [automation]
-    end
-
     test "get_automation!/1 returns the automation with given id" do
       automation = automation_fixture()
       assert Automations.get_automation!(automation.id) == automation

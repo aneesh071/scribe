@@ -6,16 +6,29 @@ defmodule SocialScribeWeb.UserSettingsLive do
 
   @impl true
   def mount(_params, _session, socket) do
+    {:ok,
+     socket
+     |> assign(:page_title, "User Settings")
+     |> assign(:google_accounts, [])
+     |> assign(:linkedin_accounts, [])
+     |> assign(:facebook_accounts, [])
+     |> assign(:hubspot_accounts, [])
+     |> assign(:salesforce_accounts, [])
+     |> assign(:user_bot_preference, %Bots.UserBotPreference{})
+     |> assign(
+       :user_bot_preference_form,
+       to_form(Bots.change_user_bot_preference(%Bots.UserBotPreference{}))
+     )}
+  end
+
+  @impl true
+  def handle_params(_params, _uri, socket) do
     current_user = socket.assigns.current_user
 
     google_accounts = Accounts.list_user_credentials(current_user, provider: "google")
-
     linkedin_accounts = Accounts.list_user_credentials(current_user, provider: "linkedin")
-
     facebook_accounts = Accounts.list_user_credentials(current_user, provider: "facebook")
-
     hubspot_accounts = Accounts.list_user_credentials(current_user, provider: "hubspot")
-
     salesforce_accounts = Accounts.list_user_credentials(current_user, provider: "salesforce")
 
     user_bot_preference =
@@ -25,7 +38,6 @@ defmodule SocialScribeWeb.UserSettingsLive do
 
     socket =
       socket
-      |> assign(:page_title, "User Settings")
       |> assign(:google_accounts, google_accounts)
       |> assign(:linkedin_accounts, linkedin_accounts)
       |> assign(:facebook_accounts, facebook_accounts)
@@ -34,24 +46,17 @@ defmodule SocialScribeWeb.UserSettingsLive do
       |> assign(:user_bot_preference, user_bot_preference)
       |> assign(:user_bot_preference_form, to_form(changeset))
 
-    {:ok, socket}
-  end
-
-  @impl true
-  def handle_params(_params, _uri, socket) do
     case socket.assigns.live_action do
       :facebook_pages ->
         facebook_page_options =
-          socket.assigns.current_user
+          current_user
           |> Accounts.list_linked_facebook_pages()
           |> Enum.map(&{&1.page_name, &1.id})
 
-        socket =
-          socket
-          |> assign(:facebook_page_options, facebook_page_options)
-          |> assign(:facebook_page_form, to_form(%{"facebook_page" => ""}))
-
-        {:noreply, socket}
+        {:noreply,
+         socket
+         |> assign(:facebook_page_options, facebook_page_options)
+         |> assign(:facebook_page_form, to_form(%{"facebook_page" => ""}))}
 
       _ ->
         {:noreply, socket}

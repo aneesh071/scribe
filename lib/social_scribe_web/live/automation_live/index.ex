@@ -6,12 +6,17 @@ defmodule SocialScribeWeb.AutomationLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :automations, Automations.list_automations())}
+    {:ok, assign(socket, :automations, [])}
   end
 
   @impl true
   def handle_params(params, _url, socket) do
-    {:noreply, apply_action(socket, socket.assigns.live_action, params)}
+    socket =
+      socket
+      |> assign(:automations, Automations.list_user_automations(socket.assigns.current_user.id))
+      |> apply_action(socket.assigns.live_action, params)
+
+    {:noreply, socket}
   end
 
   defp apply_action(socket, :edit, %{"id" => id}) do

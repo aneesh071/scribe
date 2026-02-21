@@ -7,14 +7,13 @@ defmodule SocialScribeWeb.MeetingLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
+    {:ok, assign(socket, :page_title, "Past Meetings")}
+  end
+
+  @impl true
+  def handle_params(_params, _uri, socket) do
     meetings = Meetings.list_user_meetings(socket.assigns.current_user)
-
-    socket =
-      socket
-      |> assign(:page_title, "Past Meetings")
-      |> assign(:meetings, meetings)
-
-    {:ok, socket}
+    {:noreply, assign(socket, :meetings, meetings)}
   end
 
   defp format_duration(nil), do: "N/A"
