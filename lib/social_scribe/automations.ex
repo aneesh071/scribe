@@ -96,10 +96,21 @@ defmodule SocialScribe.Automations do
     |> Map.new()
   end
 
+  # Pre-computed string→atom mapping for known Automation fields.
+  # Avoids String.to_existing_atom/1 which raises ArgumentError on unknown keys.
+  @known_keys Map.new(
+                ~w(name platform description example is_active user_id),
+                fn key -> {key, String.to_atom(key)} end
+              )
+
   defp sanitize_keys({key, value}) when is_atom(key), do: {key, value}
 
-  defp sanitize_keys({key, value}) when is_binary(key),
-    do: {String.to_existing_atom(key), value}
+  defp sanitize_keys({key, value}) when is_binary(key) do
+    case Map.get(@known_keys, key) do
+      nil -> {key, value}
+      atom_key -> {atom_key, value}
+    end
+  end
 
   @doc """
   Updates a automation.
