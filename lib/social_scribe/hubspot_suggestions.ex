@@ -47,6 +47,10 @@ defmodule SocialScribe.HubspotSuggestions do
   # Allowlist derived from @field_labels — guards against AI-hallucinated field names
   @allowed_fields MapSet.new(Map.keys(@field_labels))
 
+  # Pre-computed string→atom mapping derived from @field_labels keys.
+  # Eliminates the need for String.to_existing_atom/1 + rescue.
+  @field_atom_mapping Map.new(Map.keys(@field_labels), fn key -> {key, String.to_atom(key)} end)
+
   @doc """
   Generates suggested updates for a HubSpot contact based on a meeting transcript.
 
@@ -134,11 +138,10 @@ defmodule SocialScribe.HubspotSuggestions do
   end
 
   defp get_contact_field(contact, field) when is_map(contact) do
-    # Convert string field to atom for map access
-    field_atom = String.to_existing_atom(field)
-    Map.get(contact, field_atom)
-  rescue
-    ArgumentError -> nil
+    case Map.get(@field_atom_mapping, field) do
+      nil -> nil
+      field_atom -> Map.get(contact, field_atom)
+    end
   end
 
   defp get_contact_field(_, _), do: nil

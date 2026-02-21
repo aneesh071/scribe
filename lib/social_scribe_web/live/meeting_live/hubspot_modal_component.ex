@@ -1,6 +1,14 @@
 defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
   use SocialScribeWeb, :live_component
 
+  @moduledoc """
+  LiveComponent for the HubSpot CRM integration modal.
+
+  Provides contact search, AI-generated suggestion cards with category grouping,
+  and selective field update submission. Communicates with the parent LiveView
+  via send/send_update pattern for all async API operations.
+  """
+
   import SocialScribeWeb.ModalComponents
 
   @impl true
@@ -52,7 +60,14 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
 
   defp suggestions_section(assigns) do
     assigns = assign(assigns, :selected_count, Enum.count(assigns.suggestions, & &1.apply))
-    category_order = ["Contact Info", "Professional Details", "Address", "Social & Web", "Other"]
+
+    category_order = [
+      "Contact Info",
+      "Professional Details",
+      "Address",
+      "Social & Web",
+      "Other"
+    ]
 
     assigns =
       assign(
@@ -96,7 +111,7 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
               disabled={@selected_count == 0}
               loading={@loading}
               loading_text="Updating..."
-              info_text={"1 object, #{@selected_count} fields in 1 integration selected to update"}
+              info_text={"1 object, #{@selected_count} field#{if @selected_count != 1, do: "s"} in 1 integration selected to update"}
               theme="hubspot"
             />
           </form>
@@ -112,6 +127,7 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
       socket
       |> assign(assigns)
       |> maybe_select_all_suggestions(assigns)
+      |> assign_new(:step, fn -> :search end)
       |> assign_new(:query, fn -> "" end)
       |> assign_new(:contacts, fn -> [] end)
       |> assign_new(:selected_contact, fn -> nil end)
@@ -179,10 +195,7 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
       socket = assign(socket, dropdown_open: true, searching: true)
 
       query =
-        case socket.assigns.selected_contact do
-          %{firstname: fname, lastname: lname} -> "#{fname} #{lname}"
-          _ -> ""
-        end
+        "#{socket.assigns.selected_contact.firstname} #{socket.assigns.selected_contact.lastname}"
 
       send(self(), {:hubspot_search, query, socket.assigns.credential})
       {:noreply, socket}
@@ -219,6 +232,7 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
   def handle_event("clear_contact", _params, socket) do
     {:noreply,
      assign(socket,
+       step: :search,
        selected_contact: nil,
        suggestions: [],
        loading: false,

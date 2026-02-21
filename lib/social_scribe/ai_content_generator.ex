@@ -6,6 +6,8 @@ defmodule SocialScribe.AIContentGenerator do
   alias SocialScribe.Meetings
   alias SocialScribe.Automations
 
+  require Logger
+
   @gemini_model "gemini-2.0-flash"
   @gemini_api_base_url "https://generativelanguage.googleapis.com/v1beta/models"
 
@@ -186,10 +188,12 @@ defmodule SocialScribe.AIContentGenerator do
 
         {:ok, formatted}
 
-      {:ok, _} ->
+      {:ok, _non_list} ->
+        Logger.warning("CRM suggestions response was valid JSON but not a list")
         {:ok, []}
 
-      {:error, _} ->
+      {:error, decode_error} ->
+        Logger.warning("Failed to parse CRM suggestions JSON: #{inspect(decode_error)}")
         {:ok, []}
     end
   end

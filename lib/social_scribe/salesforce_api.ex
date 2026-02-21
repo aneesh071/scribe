@@ -37,6 +37,12 @@ defmodule SocialScribe.SalesforceApi do
     ])
   end
 
+  defp validate_salesforce_id(contact_id) do
+    if Regex.match?(@salesforce_id_pattern, contact_id),
+      do: :ok,
+      else: {:error, :invalid_contact_id}
+  end
+
   @impl true
   def search_contacts(%UserCredential{} = credential, query) when is_binary(query) do
     with_token_refresh(credential, fn cred ->
@@ -67,9 +73,7 @@ defmodule SocialScribe.SalesforceApi do
   @impl true
   def get_contact(%UserCredential{} = credential, contact_id)
       when is_binary(contact_id) do
-    if not Regex.match?(@salesforce_id_pattern, contact_id) do
-      {:error, :invalid_contact_id}
-    else
+    with :ok <- validate_salesforce_id(contact_id) do
       with_token_refresh(credential, fn cred ->
         fields = Enum.join(@contact_fields, ",")
 
@@ -96,9 +100,7 @@ defmodule SocialScribe.SalesforceApi do
   @impl true
   def update_contact(%UserCredential{} = credential, contact_id, updates)
       when is_binary(contact_id) and is_map(updates) do
-    if not Regex.match?(@salesforce_id_pattern, contact_id) do
-      {:error, :invalid_contact_id}
-    else
+    with :ok <- validate_salesforce_id(contact_id) do
       with_token_refresh(credential, fn cred ->
         case Tesla.patch(
                client(cred),

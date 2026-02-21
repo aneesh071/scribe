@@ -1,6 +1,14 @@
 defmodule SocialScribe.Workers.BotStatusPoller do
   use Oban.Worker, queue: :polling, max_attempts: 3
 
+  @moduledoc """
+  Oban cron worker that polls pending Recall.ai bots for status updates.
+
+  Runs every 2 minutes. When a bot reports "done", fetches the transcript
+  and participant data, creates a Meeting record, and enqueues AI content
+  generation.
+  """
+
   alias SocialScribe.Bots
   alias SocialScribe.RecallApi
   alias SocialScribe.Meetings
@@ -31,15 +39,21 @@ defmodule SocialScribe.Workers.BotStatusPoller do
           |> List.last()
           |> Map.get(:code)
 
-        {:ok, updated_bot_record} = Bots.update_recall_bot(bot_record, %{status: new_status})
+        case Bots.update_recall_bot(bot_record, %{status: new_status}) do
+          {:ok, updated_bot_record} ->
+            if new_status == "done" &&
+                 is_nil(Meetings.get_meeting_by_recall_bot_id(updated_bot_record.id)) do
+              process_completed_bot(updated_bot_record, bot_api_info)
+            else
+              if new_status != bot_record.status do
+                Logger.info("Bot #{bot_record.recall_bot_id} status updated to: #{new_status}")
+              end
+            end
 
-        if new_status == "done" &&
-             is_nil(Meetings.get_meeting_by_recall_bot_id(updated_bot_record.id)) do
-          process_completed_bot(updated_bot_record, bot_api_info)
-        else
-          if new_status != bot_record.status do
-            Logger.info("Bot #{bot_record.recall_bot_id} status updated to: #{new_status}")
-          end
+          {:error, reason} ->
+            Logger.error(
+              "Failed to update bot #{bot_record.recall_bot_id} status to #{new_status}: #{inspect(reason)}"
+            )
         end
 
       {:error, reason} ->

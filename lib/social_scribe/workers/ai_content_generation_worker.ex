@@ -1,10 +1,18 @@
 defmodule SocialScribe.Workers.AIContentGenerationWorker do
-  alias SocialScribe.Meetings.Meeting
   use Oban.Worker, queue: :ai_content, max_attempts: 3
 
-  alias SocialScribe.Meetings
+  @moduledoc """
+  Oban worker that generates AI content for completed meetings.
+
+  Triggered by BotStatusPoller when a Recall.ai bot finishes recording.
+  Generates a follow-up email draft via Gemini, then processes all active
+  user automations to create platform-specific social media content.
+  """
+
   alias SocialScribe.AIContentGeneratorApi
   alias SocialScribe.Automations
+  alias SocialScribe.Meetings
+  alias SocialScribe.Meetings.Meeting
 
   require Logger
 
@@ -22,8 +30,9 @@ defmodule SocialScribe.Workers.AIContentGenerationWorker do
           :ok ->
             if meeting.calendar_event && meeting.calendar_event.user_id do
               process_user_automations(meeting, meeting.calendar_event.user_id)
-              :ok
             end
+
+            :ok
 
           {:error, reason} ->
             {:error, reason}
