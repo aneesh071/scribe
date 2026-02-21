@@ -45,30 +45,18 @@ defmodule SocialScribe.Workers.HubspotTokenRefresher do
   end
 
   defp refresh_all(credentials) do
-    results =
-      Enum.map(credentials, fn credential ->
-        case HubspotTokenRefresher.refresh_credential(credential) do
-          {:ok, _updated} ->
-            Logger.info("Proactively refreshed HubSpot token for credential #{credential.id}")
-            :ok
+    Enum.each(credentials, fn credential ->
+      case HubspotTokenRefresher.refresh_credential(credential) do
+        {:ok, _updated} ->
+          Logger.info("Proactively refreshed HubSpot token for credential #{credential.id}")
 
-          {:error, reason} ->
-            Logger.error(
-              "Failed to proactively refresh HubSpot token for credential #{credential.id}: #{inspect(reason)}"
-            )
+        {:error, reason} ->
+          Logger.error(
+            "Failed to proactively refresh HubSpot token for credential #{credential.id}: #{inspect(reason)}"
+          )
+      end
+    end)
 
-            {:error, credential.id, reason}
-        end
-      end)
-
-    errors = Enum.filter(results, &match?({:error, _, _}, &1))
-
-    if Enum.empty?(errors) do
-      :ok
-    else
-      # Return ok anyway - we don't want to retry the whole batch
-      # Individual failures are logged
-      :ok
-    end
+    :ok
   end
 end

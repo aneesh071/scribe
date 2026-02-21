@@ -23,9 +23,7 @@ defmodule SocialScribe.Workers.BotStatusPoller do
       Logger.info("Polling #{Enum.count(bots_to_poll)} pending Recall.ai bots...")
     end
 
-    for bot_record <- bots_to_poll do
-      poll_and_process_bot(bot_record)
-    end
+    Enum.each(bots_to_poll, &poll_and_process_bot/1)
 
     :ok
   end

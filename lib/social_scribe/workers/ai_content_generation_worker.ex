@@ -78,7 +78,7 @@ defmodule SocialScribe.Workers.AIContentGenerationWorker do
         "Processing #{Enum.count(user_automations)} automations for meeting #{meeting.id}"
       )
 
-      for automation <- user_automations do
+      Enum.each(user_automations, fn automation ->
         case AIContentGeneratorApi.generate_automation(automation, meeting) do
           {:ok, generated_text} ->
             Automations.create_automation_result(%{
@@ -104,7 +104,7 @@ defmodule SocialScribe.Workers.AIContentGenerationWorker do
               "Failed to generate content for automation '#{automation.name}', meeting #{meeting.id}: #{inspect(reason)}"
             )
         end
-      end
+      end)
     end
   end
 end
