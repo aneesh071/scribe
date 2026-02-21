@@ -1,6 +1,12 @@
 defmodule SocialScribeWeb.AuthController do
   use SocialScribeWeb, :controller
 
+  @moduledoc """
+  Handles OAuth callbacks for all providers (Google, LinkedIn, Facebook,
+  HubSpot, Salesforce). Routes to credential creation or user login based
+  on authentication state.
+  """
+
   alias SocialScribe.FacebookApi
   alias SocialScribe.Accounts
   alias SocialScribeWeb.UserAuth
@@ -23,7 +29,8 @@ defmodule SocialScribeWeb.AuthController do
         "provider" => "google"
       })
       when not is_nil(user) do
-    Logger.info("Google OAuth callback for user #{user.id}")
+    Logger.info("Google OAuth")
+    Logger.info(auth)
 
     case Accounts.find_or_create_user_credential(user, auth) do
       {:ok, _credential} ->
@@ -41,15 +48,21 @@ defmodule SocialScribeWeb.AuthController do
   def callback(%{assigns: %{ueberauth_auth: auth, current_user: user}} = conn, %{
         "provider" => "linkedin"
       }) do
-    Logger.info("LinkedIn OAuth callback for user #{user.id}")
+    Logger.info("LinkedIn OAuth")
+    Logger.info(auth)
 
     case Accounts.find_or_create_user_credential(user, auth) do
-      {:ok, _credential} ->
+      {:ok, credential} ->
+        Logger.info("credential")
+        Logger.info(credential)
+
         conn
         |> put_flash(:info, "LinkedIn account added successfully.")
         |> redirect(to: ~p"/dashboard/settings")
 
-      {:error, _reason} ->
+      {:error, reason} ->
+        Logger.error(reason)
+
         conn
         |> put_flash(:error, "Could not add LinkedIn account.")
         |> redirect(to: ~p"/dashboard/settings")
@@ -60,7 +73,8 @@ defmodule SocialScribeWeb.AuthController do
         "provider" => "facebook"
       })
       when not is_nil(user) do
-    Logger.info("Facebook OAuth callback for user #{user.id}")
+    Logger.info("Facebook OAuth")
+    Logger.info(auth)
 
     case Accounts.find_or_create_user_credential(user, auth) do
       {:ok, credential} ->
@@ -93,7 +107,8 @@ defmodule SocialScribeWeb.AuthController do
         "provider" => "hubspot"
       })
       when not is_nil(user) do
-    Logger.info("HubSpot OAuth callback for user #{user.id}")
+    Logger.info("HubSpot OAuth")
+    Logger.info(inspect(auth))
 
     hub_id = to_string(auth.uid)
 
@@ -130,17 +145,15 @@ defmodule SocialScribeWeb.AuthController do
         "provider" => "salesforce"
       })
       when not is_nil(user) do
-    instance_url = auth.credentials.other[:instance_url]
+    Logger.info("Salesforce OAuth for user #{user.id}")
 
-    Logger.info(
-      "Salesforce OAuth callback for user #{user.id}, uid: #{auth.uid}, email: #{auth.info.email}"
-    )
+    instance_url = get_in(auth, [Access.key(:credentials), Access.key(:other), :instance_url])
 
-    if is_nil(instance_url) do
-      Logger.error("Salesforce callback missing instance_url for user #{user.id}")
+    if is_nil(instance_url) || instance_url == "" do
+      Logger.error("Salesforce OAuth missing instance_url for user #{user.id}")
 
       conn
-      |> put_flash(:error, "Salesforce authorization failed: could not determine instance URL.")
+      |> put_flash(:error, "Could not connect Salesforce: missing instance URL.")
       |> redirect(to: ~p"/dashboard/settings")
     else
       credential_attrs = %{
@@ -149,9 +162,9 @@ defmodule SocialScribeWeb.AuthController do
         uid: to_string(auth.uid),
         token: auth.credentials.token,
         refresh_token: auth.credentials.refresh_token,
+        instance_url: instance_url,
         expires_at: DateTime.add(DateTime.utc_now(), 7200, :second),
-        email: auth.info.email,
-        instance_url: instance_url
+        email: auth.info.email
       }
 
       case Accounts.find_or_create_salesforce_credential(user, credential_attrs) do
@@ -173,14 +186,18 @@ defmodule SocialScribeWeb.AuthController do
   end
 
   def callback(%{assigns: %{ueberauth_auth: auth}} = conn, _params) do
+    Logger.info("Google OAuth Login")
+    Logger.info(auth)
+
     case Accounts.find_or_create_user_from_oauth(auth) do
       {:ok, user} ->
-        Logger.info("User #{user.id} logged in via OAuth")
-
         conn
         |> UserAuth.log_in_user(user)
 
-      {:error, _reason} ->
+      {:error, reason} ->
+        Logger.info("error")
+        Logger.info(reason)
+
         conn
         |> put_flash(:error, "There was an error signing you in.")
         |> redirect(to: ~p"/")
@@ -188,7 +205,8 @@ defmodule SocialScribeWeb.AuthController do
   end
 
   def callback(conn, _params) do
-    Logger.error("OAuth callback failed: no auth data in assigns")
+    Logger.error("OAuth Login")
+    Logger.error(conn)
 
     conn
     |> put_flash(:error, "There was an error signing you in. Please try again.")

@@ -1,22 +1,26 @@
 defmodule SocialScribeWeb.AutomationLive.Index do
   use SocialScribeWeb, :live_view
 
+  @moduledoc """
+  LiveView for listing and managing user-defined content automation templates.
+  """
+
   alias SocialScribe.Automations
   alias SocialScribe.Automations.Automation
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :automations, [])}
+    {:ok,
+     assign(
+       socket,
+       :automations,
+       Automations.list_user_automations(socket.assigns.current_user.id)
+     )}
   end
 
   @impl true
   def handle_params(params, _url, socket) do
-    socket =
-      socket
-      |> assign(:automations, Automations.list_user_automations(socket.assigns.current_user.id))
-      |> apply_action(socket.assigns.live_action, params)
-
-    {:noreply, socket}
+    {:noreply, apply_action(socket, socket.assigns.live_action, params)}
   end
 
   defp apply_action(socket, :edit, %{"id" => id}) do
