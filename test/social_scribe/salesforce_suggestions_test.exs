@@ -143,4 +143,46 @@ defmodule SocialScribe.SalesforceSuggestionsTest do
       Mox.verify_on_exit!()
     end
   end
+
+  describe "field consistency" do
+    test "all Fields.field_mapping keys are accepted by @allowed_fields" do
+      Mox.verify_on_exit!()
+
+      field_mapping_keys = Map.keys(SocialScribe.Salesforce.Fields.field_mapping())
+
+      ai_suggestions =
+        Enum.map(field_mapping_keys, fn field ->
+          %{field: field, value: "test_value", context: "test context", timestamp: "01:00"}
+        end)
+
+      Mox.expect(
+        SocialScribe.AIContentGeneratorMock,
+        :generate_salesforce_suggestions,
+        fn _meeting -> {:ok, ai_suggestions} end
+      )
+
+      {:ok, suggestions} =
+        SocialScribe.SalesforceSuggestions.generate_suggestions_from_meeting(%{})
+
+      returned_fields = Enum.map(suggestions, & &1.field) |> MapSet.new()
+      expected_fields = MapSet.new(field_mapping_keys)
+
+      assert returned_fields == expected_fields,
+             "Fields in SalesforceSuggestions don't match Fields.field_mapping/0. " <>
+               "Missing: #{inspect(MapSet.difference(expected_fields, returned_fields))}. " <>
+               "Extra: #{inspect(MapSet.difference(returned_fields, expected_fields))}"
+
+      # Verify every suggestion has a non-nil label
+      for suggestion <- suggestions do
+        assert is_binary(suggestion.label) and suggestion.label != "",
+               "Field #{suggestion.field} has empty or nil label in SalesforceSuggestions"
+      end
+
+      # Verify every suggestion has a non-nil category
+      for suggestion <- suggestions do
+        assert is_binary(suggestion.category) and suggestion.category != "",
+               "Field #{suggestion.field} has empty or nil category in SalesforceSuggestions"
+      end
+    end
+  end
 end
