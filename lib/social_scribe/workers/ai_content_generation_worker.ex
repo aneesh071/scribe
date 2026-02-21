@@ -81,24 +81,38 @@ defmodule SocialScribe.Workers.AIContentGenerationWorker do
       Enum.each(user_automations, fn automation ->
         case AIContentGeneratorApi.generate_automation(automation, meeting) do
           {:ok, generated_text} ->
-            Automations.create_automation_result(%{
-              automation_id: automation.id,
-              meeting_id: meeting.id,
-              generated_content: generated_text,
-              status: "draft"
-            })
+            case Automations.create_automation_result(%{
+                   automation_id: automation.id,
+                   meeting_id: meeting.id,
+                   generated_content: generated_text,
+                   status: "draft"
+                 }) do
+              {:ok, _result} ->
+                Logger.info(
+                  "Successfully generated content for automation '#{automation.name}', meeting #{meeting.id}"
+                )
 
-            Logger.info(
-              "Successfully generated content for automation '#{automation.name}', meeting #{meeting.id}"
-            )
+              {:error, changeset} ->
+                Logger.error(
+                  "Failed to save automation result for '#{automation.name}', meeting #{meeting.id}: #{inspect(changeset.errors)}"
+                )
+            end
 
           {:error, reason} ->
-            Automations.create_automation_result(%{
-              automation_id: automation.id,
-              meeting_id: meeting.id,
-              status: "generation_failed",
-              error_message: "Gemini API error: #{inspect(reason)}"
-            })
+            case Automations.create_automation_result(%{
+                   automation_id: automation.id,
+                   meeting_id: meeting.id,
+                   status: "generation_failed",
+                   error_message: "Gemini API error: #{inspect(reason)}"
+                 }) do
+              {:ok, _result} ->
+                :ok
+
+              {:error, changeset} ->
+                Logger.error(
+                  "Failed to save error result for automation '#{automation.name}', meeting #{meeting.id}: #{inspect(changeset.errors)}"
+                )
+            end
 
             Logger.error(
               "Failed to generate content for automation '#{automation.name}', meeting #{meeting.id}: #{inspect(reason)}"

@@ -350,18 +350,29 @@ defmodule SocialScribe.Meetings do
     Repo.transaction(fn ->
       meeting_attrs = parse_meeting_attrs(calendar_event, recall_bot, bot_api_info)
 
-      {:ok, meeting} = create_meeting(meeting_attrs)
+      meeting =
+        case create_meeting(meeting_attrs) do
+          {:ok, meeting} -> meeting
+          {:error, changeset} -> Repo.rollback({:meeting_insert_failed, changeset})
+        end
 
       transcript_attrs = parse_transcript_attrs(meeting, transcript_data)
 
-      {:ok, _transcript} = create_meeting_transcript(transcript_attrs)
+      case create_meeting_transcript(transcript_attrs) do
+        {:ok, _transcript} -> :ok
+        {:error, changeset} -> Repo.rollback({:transcript_insert_failed, changeset})
+      end
 
       # Use participants from Recall.ai participants endpoint (includes all attendees, not just speakers)
       participants = parse_participants_data(participants_data)
 
       Enum.each(participants, fn participant_data ->
         participant_attrs = parse_participant_attrs(meeting, participant_data)
-        {:ok, _participant} = create_meeting_participant(participant_attrs)
+
+        case create_meeting_participant(participant_attrs) do
+          {:ok, _participant} -> :ok
+          {:error, changeset} -> Repo.rollback({:participant_insert_failed, changeset})
+        end
       end)
 
       Repo.preload(meeting, [:meeting_transcript, :meeting_participants])

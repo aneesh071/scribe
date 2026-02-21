@@ -1,9 +1,9 @@
 defmodule SocialScribeWeb.AutomationLive.Index do
-  use SocialScribeWeb, :live_view
-
   @moduledoc """
   LiveView for listing and managing user-defined content automation templates.
   """
+
+  use SocialScribeWeb, :live_view
 
   alias SocialScribe.Automations
   alias SocialScribe.Automations.Automation

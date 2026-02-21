@@ -129,6 +129,21 @@ defmodule SocialScribe.Accounts do
   end
 
   @doc """
+  Lists credentials for a given provider that are expiring before the given threshold.
+
+  Used by token refresher workers to proactively refresh OAuth tokens.
+  """
+  @spec list_expiring_credentials(String.t(), DateTime.t()) :: [UserCredential.t()]
+  def list_expiring_credentials(provider, %DateTime{} = threshold) do
+    from(c in UserCredential,
+      where: c.provider == ^provider,
+      where: c.expires_at < ^threshold,
+      where: not is_nil(c.refresh_token)
+    )
+    |> Repo.all()
+  end
+
+  @doc """
   Gets a single user_credential.
 
   Raises `Ecto.NoResultsError` if the User credential does not exist.

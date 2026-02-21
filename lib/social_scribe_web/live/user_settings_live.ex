@@ -1,10 +1,10 @@
 defmodule SocialScribeWeb.UserSettingsLive do
-  use SocialScribeWeb, :live_view
-
   @moduledoc """
   LiveView for managing OAuth connections (Google, LinkedIn, Facebook, HubSpot,
   Salesforce), Facebook page selection, and bot recording preferences.
   """
+
+  use SocialScribeWeb, :live_view
 
   alias SocialScribe.Accounts
   alias SocialScribe.Bots

@@ -1,9 +1,9 @@
 defmodule SocialScribeWeb.MeetingLive.Index do
-  use SocialScribeWeb, :live_view
-
   @moduledoc """
   LiveView listing all past meetings with attendees, timestamps, and platform logos.
   """
+
+  use SocialScribeWeb, :live_view
 
   import SocialScribeWeb.PlatformLogo
 

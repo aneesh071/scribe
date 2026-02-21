@@ -1,11 +1,11 @@
 defmodule SocialScribeWeb.HomeLive do
-  use SocialScribeWeb, :live_view
-
   @moduledoc """
   Dashboard LiveView showing upcoming calendar events with bot recording toggles.
 
   Initiates calendar sync on connection and displays events with Zoom/Meet links.
   """
+
+  use SocialScribeWeb, :live_view
 
   alias SocialScribe.Calendar
   alias SocialScribe.CalendarSyncronizer

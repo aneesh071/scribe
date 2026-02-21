@@ -6,12 +6,10 @@ defmodule SocialScribe.Workers.SalesforceTokenRefresher do
 
   use Oban.Worker, queue: :default, max_attempts: 3
 
+  alias SocialScribe.Accounts
+  alias SocialScribe.SalesforceTokenRefresher
+
   require Logger
-
-  import Ecto.Query
-
-  alias SocialScribe.Accounts.UserCredential
-  alias SocialScribe.{Repo, SalesforceTokenRefresher}
 
   @refresh_threshold_minutes 60
 
@@ -19,7 +17,8 @@ defmodule SocialScribe.Workers.SalesforceTokenRefresher do
   def perform(_job) do
     Logger.info("Running proactive Salesforce token refresh check...")
 
-    credentials = get_expiring_salesforce_credentials()
+    threshold = DateTime.add(DateTime.utc_now(), @refresh_threshold_minutes, :minute)
+    credentials = Accounts.list_expiring_credentials("salesforce", threshold)
 
     case credentials do
       [] ->
@@ -33,18 +32,6 @@ defmodule SocialScribe.Workers.SalesforceTokenRefresher do
 
         refresh_all(credentials)
     end
-  end
-
-  defp get_expiring_salesforce_credentials do
-    threshold = DateTime.add(DateTime.utc_now(), @refresh_threshold_minutes, :minute)
-
-    from(uc in UserCredential,
-      where:
-        uc.provider == "salesforce" and
-          uc.expires_at < ^threshold and
-          not is_nil(uc.refresh_token)
-    )
-    |> Repo.all()
   end
 
   defp refresh_all(credentials) do

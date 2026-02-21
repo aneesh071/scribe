@@ -1,11 +1,11 @@
 defmodule SocialScribeWeb.AuthController do
-  use SocialScribeWeb, :controller
-
   @moduledoc """
   Handles OAuth callbacks for all providers (Google, LinkedIn, Facebook,
   HubSpot, Salesforce). Routes to credential creation or user login based
   on authentication state.
   """
+
+  use SocialScribeWeb, :controller
 
   alias SocialScribe.FacebookApi
   alias SocialScribe.Accounts
