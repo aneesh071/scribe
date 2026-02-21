@@ -18,8 +18,6 @@ defmodule SocialScribeWeb.UserSessionController do
     create(conn, params, "Welcome back!")
   end
 
-  # TODO: Add Google OAuth login
-
   defp create(conn, %{"user" => user_params}, info) do
     %{"email" => email, "password" => _password} = user_params
 
@@ -32,7 +30,7 @@ defmodule SocialScribeWeb.UserSessionController do
       conn
       |> put_flash(:error, "Invalid email or password")
       |> put_flash(:email, String.slice(email, 0, 160))
-      |> redirect(to: ~p"/users/log_in")
+      |> redirect(to: ~p"/")
     end
   end
 

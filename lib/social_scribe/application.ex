@@ -18,6 +18,8 @@ defmodule SocialScribe.Application do
       {Finch, name: SocialScribe.Finch},
       # Start a worker by calling: SocialScribe.Worker.start_link(arg)
       # {SocialScribe.Worker, arg},
+      # Task.Supervisor for fault-isolated async work (calendar sync, etc.)
+      {Task.Supervisor, name: SocialScribe.TaskSupervisor},
       # Start to serve requests, typically the last entry
       SocialScribeWeb.Endpoint
     ]

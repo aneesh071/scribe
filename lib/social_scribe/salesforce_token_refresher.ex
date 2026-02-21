@@ -10,7 +10,11 @@ defmodule SocialScribe.SalesforceTokenRefresher do
 
   require Logger
 
-  @salesforce_token_url "https://login.salesforce.com/services/oauth2/token"
+  @salesforce_token_url Application.compile_env(
+                          :social_scribe,
+                          :salesforce_token_url,
+                          "https://login.salesforce.com/services/oauth2/token"
+                        )
   @refresh_buffer_seconds 300
   @default_token_lifetime_seconds 7200
 

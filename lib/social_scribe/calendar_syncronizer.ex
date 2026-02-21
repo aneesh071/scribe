@@ -15,13 +15,15 @@ defmodule SocialScribe.CalendarSyncronizer do
   Syncs events for a user.
 
   Currently, only works for the primary calendar and for meeting links that are either on the hangoutLink or location field.
-
-  #TODO: Add support for syncing only since the last sync time and record sync attempts
   """
   def sync_events_for_user(user) do
-    user
-    |> Accounts.list_user_credentials(provider: "google")
-    |> Task.async_stream(&fetch_and_sync_for_credential/1, ordered: false, on_timeout: :kill_task)
+    credentials = Accounts.list_user_credentials(user, provider: "google")
+
+    SocialScribe.TaskSupervisor
+    |> Task.Supervisor.async_stream_nolink(credentials, &fetch_and_sync_for_credential/1,
+      ordered: false,
+      on_timeout: :kill_task
+    )
     |> Stream.run()
 
     {:ok, :sync_complete}

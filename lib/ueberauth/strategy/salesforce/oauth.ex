@@ -74,7 +74,10 @@ defmodule Ueberauth.Strategy.Salesforce.OAuth do
         {:ok, body}
 
       {:ok, %Tesla.Env{status: 200, body: body}} when is_binary(body) ->
-        {:ok, Ueberauth.json_library().decode!(body)}
+        case Ueberauth.json_library().decode(body) do
+          {:ok, decoded} -> {:ok, decoded}
+          {:error, _} -> {:error, "Failed to decode Salesforce user info response"}
+        end
 
       {:ok, %Tesla.Env{status: status, body: body}} ->
         {:error, "Salesforce user info failed (#{status}): #{inspect(body)}"}
