@@ -1,6 +1,11 @@
 defmodule SocialScribeWeb.UserSessionController do
   use SocialScribeWeb, :controller
 
+  @moduledoc """
+  Manages user session lifecycle: creates authenticated sessions on login
+  and destroys them on logout.
+  """
+
   alias SocialScribe.Accounts
   alias SocialScribeWeb.UserAuth
 
@@ -18,6 +23,8 @@ defmodule SocialScribeWeb.UserSessionController do
     create(conn, params, "Welcome back!")
   end
 
+  # TODO: Add Google OAuth login
+
   defp create(conn, %{"user" => user_params}, info) do
     %{"email" => email, "password" => _password} = user_params
 
@@ -30,7 +37,7 @@ defmodule SocialScribeWeb.UserSessionController do
       conn
       |> put_flash(:error, "Invalid email or password")
       |> put_flash(:email, String.slice(email, 0, 160))
-      |> redirect(to: ~p"/")
+      |> redirect(to: ~p"/users/log_in")
     end
   end
 

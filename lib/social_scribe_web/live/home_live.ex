@@ -1,6 +1,12 @@
 defmodule SocialScribeWeb.HomeLive do
   use SocialScribeWeb, :live_view
 
+  @moduledoc """
+  Dashboard LiveView showing upcoming calendar events with bot recording toggles.
+
+  Initiates calendar sync on connection and displays events with Zoom/Meet links.
+  """
+
   alias SocialScribe.Calendar
   alias SocialScribe.CalendarSyncronizer
   alias SocialScribe.Bots
@@ -11,17 +17,13 @@ defmodule SocialScribeWeb.HomeLive do
   def mount(_params, _session, socket) do
     if connected?(socket), do: send(self(), :sync_calendars)
 
-    {:ok,
-     socket
-     |> assign(:page_title, "Upcoming Meetings")
-     |> assign(:events, [])
-     |> assign(:loading, true)}
-  end
+    socket =
+      socket
+      |> assign(:page_title, "Upcoming Meetings")
+      |> assign(:events, Calendar.list_upcoming_events(socket.assigns.current_user))
+      |> assign(:loading, true)
 
-  @impl true
-  def handle_params(_params, _uri, socket) do
-    {:noreply,
-     assign(socket, :events, Calendar.list_upcoming_events(socket.assigns.current_user))}
+    {:ok, socket}
   end
 
   @impl true

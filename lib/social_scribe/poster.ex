@@ -1,8 +1,21 @@
 defmodule SocialScribe.Poster do
+  @moduledoc """
+  Dispatches social media posts to connected platforms (LinkedIn, Facebook).
+
+  Reads the user's OAuth credentials and calls the appropriate platform API.
+  """
+
   alias SocialScribe.LinkedInApi
   alias SocialScribe.FacebookApi
   alias SocialScribe.Accounts
 
+  @doc """
+  Posts generated content to the specified social media platform.
+
+  Accepts `:linkedin` or `:facebook` as the platform, looks up the user's
+  stored OAuth credential, and dispatches the content via the platform API.
+  Returns `{:ok, response}` on success or `{:error, reason}` on failure.
+  """
   def post_on_social_media(platform, generated_content, current_user) do
     case platform do
       :linkedin -> post_on_linkedin(generated_content, current_user)

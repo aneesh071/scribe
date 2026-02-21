@@ -1,6 +1,8 @@
 defmodule Ueberauth.Strategy.Salesforce.OAuth do
   @moduledoc """
-  OAuth2 for Salesforce.
+  OAuth2 client configuration for Salesforce.
+
+  Configures the token and authorize URLs for Salesforce's OAuth 2.0 endpoints.
 
   Add `client_id` and `client_secret` to your configuration:
 
@@ -18,6 +20,11 @@ defmodule Ueberauth.Strategy.Salesforce.OAuth do
     token_url: "https://login.salesforce.com/services/oauth2/token"
   ]
 
+  @doc """
+  Returns a configured `OAuth2.Client` struct for Salesforce.
+
+  Merges application config with any provided `opts`.
+  """
   def client(opts \\ []) do
     config = Application.get_env(:ueberauth, __MODULE__, [])
     json_library = Ueberauth.json_library()
@@ -32,12 +39,20 @@ defmodule Ueberauth.Strategy.Salesforce.OAuth do
     |> OAuth2.Client.put_serializer("application/json", json_library)
   end
 
+  @doc """
+  Returns the Salesforce OAuth authorization URL for redirect.
+  """
   def authorize_url!(params \\ [], opts \\ []) do
     opts
     |> client()
     |> OAuth2.Client.authorize_url!(params)
   end
 
+  @doc """
+  Exchanges an authorization code for an access token.
+
+  Returns `{:ok, token}` on success or `{:error, {code, description}}` on failure.
+  """
   def get_access_token(params \\ [], opts \\ []) do
     client = client(opts)
 
@@ -63,6 +78,11 @@ defmodule Ueberauth.Strategy.Salesforce.OAuth do
     end
   end
 
+  @doc """
+  Fetches the authenticated user's profile from Salesforce's identity URL.
+
+  Returns `{:ok, user_map}` on success.
+  """
   def get_user_info(access_token, id_url) do
     headers = [
       {"Authorization", "Bearer #{access_token}"},

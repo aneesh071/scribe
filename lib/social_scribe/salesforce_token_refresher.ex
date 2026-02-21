@@ -18,6 +18,12 @@ defmodule SocialScribe.SalesforceTokenRefresher do
   @refresh_buffer_seconds 300
   @default_token_lifetime_seconds 7200
 
+  @doc """
+  Refreshes a Salesforce access token using the refresh token grant.
+
+  Makes a POST request to the Salesforce token endpoint with the stored refresh token.
+  Returns `{:ok, token_data}` with the new access token on success.
+  """
   def refresh_token(refresh_token_string) do
     config = Application.get_env(:ueberauth, Ueberauth.Strategy.Salesforce.OAuth, [])
 
@@ -42,6 +48,11 @@ defmodule SocialScribe.SalesforceTokenRefresher do
     end
   end
 
+  @doc """
+  Refreshes the token for a credential and persists the updated tokens to the database.
+
+  Returns `{:ok, updated_credential}` on success, `{:error, reason}` on failure.
+  """
   def refresh_credential(credential) do
     case refresh_token(credential.refresh_token) do
       {:ok, response} ->
@@ -64,6 +75,12 @@ defmodule SocialScribe.SalesforceTokenRefresher do
     end
   end
 
+  @doc """
+  Returns the credential if its token is still valid, or refreshes it if expired.
+
+  A token is considered expired if `expires_at` is nil or in the past.
+  Returns `{:ok, credential}` with a valid token.
+  """
   def ensure_valid_token(credential) do
     if token_expired_or_expiring?(credential) do
       refresh_credential(credential)

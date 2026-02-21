@@ -1,6 +1,13 @@
 defmodule SocialScribeWeb.UserAuth do
   use SocialScribeWeb, :verified_routes
 
+  @moduledoc """
+  Plug-based authentication helpers for both regular HTTP requests and LiveView.
+
+  Provides session management (login/logout/remember-me cookie), authentication
+  enforcement plugs, and LiveView `on_mount` hooks for route protection.
+  """
+
   import Plug.Conn
   import Phoenix.Controller
 
@@ -158,7 +165,7 @@ defmodule SocialScribeWeb.UserAuth do
       socket =
         socket
         |> Phoenix.LiveView.put_flash(:error, "You must log in to access this page.")
-        |> Phoenix.LiveView.redirect(to: ~p"/")
+        |> Phoenix.LiveView.redirect(to: ~p"/users/log_in")
 
       {:halt, socket}
     end
@@ -208,7 +215,7 @@ defmodule SocialScribeWeb.UserAuth do
       conn
       |> put_flash(:error, "You must log in to access this page.")
       |> maybe_store_return_to()
-      |> redirect(to: ~p"/")
+      |> redirect(to: ~p"/users/log_in")
       |> halt()
     end
   end

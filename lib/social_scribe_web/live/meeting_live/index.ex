@@ -1,19 +1,24 @@
 defmodule SocialScribeWeb.MeetingLive.Index do
   use SocialScribeWeb, :live_view
 
+  @moduledoc """
+  LiveView listing all past meetings with attendees, timestamps, and platform logos.
+  """
+
   import SocialScribeWeb.PlatformLogo
 
   alias SocialScribe.Meetings
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :page_title, "Past Meetings")}
-  end
-
-  @impl true
-  def handle_params(_params, _uri, socket) do
     meetings = Meetings.list_user_meetings(socket.assigns.current_user)
-    {:noreply, assign(socket, :meetings, meetings)}
+
+    socket =
+      socket
+      |> assign(:page_title, "Past Meetings")
+      |> assign(:meetings, meetings)
+
+    {:ok, socket}
   end
 
   defp format_duration(nil), do: "N/A"
