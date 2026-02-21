@@ -124,8 +124,8 @@ defmodule SocialScribeWeb.AuthController do
         |> put_flash(:info, "HubSpot account connected successfully!")
         |> redirect(to: ~p"/dashboard/settings")
 
-      {:error, reason} ->
-        Logger.error("Failed to save HubSpot credential: #{inspect(reason)}")
+      {:error, _reason} ->
+        Logger.error("Failed to save HubSpot credential for user #{user.id}")
 
         conn
         |> put_flash(:error, "Could not connect HubSpot account.")
@@ -167,8 +167,8 @@ defmodule SocialScribeWeb.AuthController do
           |> put_flash(:info, "Salesforce account connected successfully!")
           |> redirect(to: ~p"/dashboard/settings")
 
-        {:error, reason} ->
-          Logger.error("Failed to save Salesforce credential: #{inspect(reason)}")
+        {:error, _reason} ->
+          Logger.error("Failed to save Salesforce credential for user #{user.id}")
 
           conn
           |> put_flash(:error, "Could not connect Salesforce account.")

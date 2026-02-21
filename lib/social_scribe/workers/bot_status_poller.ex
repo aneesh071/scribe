@@ -1,6 +1,4 @@
 defmodule SocialScribe.Workers.BotStatusPoller do
-  use Oban.Worker, queue: :polling, max_attempts: 3
-
   @moduledoc """
   Oban cron worker that polls pending Recall.ai bots for status updates.
 
@@ -8,6 +6,8 @@ defmodule SocialScribe.Workers.BotStatusPoller do
   and participant data, creates a Meeting record, and enqueues AI content
   generation.
   """
+
+  use Oban.Worker, queue: :polling, max_attempts: 3
 
   alias SocialScribe.Bots
   alias SocialScribe.RecallApi
@@ -59,7 +59,15 @@ defmodule SocialScribe.Workers.BotStatusPoller do
           "Failed to poll bot status for #{bot_record.recall_bot_id}: #{inspect(reason)}"
         )
 
-        Bots.update_recall_bot(bot_record, %{status: "polling_error"})
+        case Bots.update_recall_bot(bot_record, %{status: "polling_error"}) do
+          {:ok, _} ->
+            :ok
+
+          {:error, update_reason} ->
+            Logger.error(
+              "Failed to mark bot #{bot_record.recall_bot_id} as polling_error: #{inspect(update_reason)}"
+            )
+        end
     end
   end
 
