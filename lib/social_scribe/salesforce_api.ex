@@ -44,6 +44,7 @@ defmodule SocialScribe.SalesforceApi do
   end
 
   @impl true
+  @spec search_contacts(UserCredential.t(), String.t()) :: {:ok, list(map())} | {:error, any()}
   def search_contacts(%UserCredential{} = credential, query) when is_binary(query) do
     with_token_refresh(credential, fn cred ->
       escaped = escape_soql_string(query)
@@ -71,6 +72,7 @@ defmodule SocialScribe.SalesforceApi do
   end
 
   @impl true
+  @spec get_contact(UserCredential.t(), String.t()) :: {:ok, map()} | {:error, any()}
   def get_contact(%UserCredential{} = credential, contact_id)
       when is_binary(contact_id) do
     with :ok <- validate_salesforce_id(contact_id) do
@@ -98,6 +100,7 @@ defmodule SocialScribe.SalesforceApi do
   end
 
   @impl true
+  @spec update_contact(UserCredential.t(), String.t(), map()) :: {:ok, :updated} | {:error, any()}
   def update_contact(%UserCredential{} = credential, contact_id, updates)
       when is_binary(contact_id) and is_map(updates) do
     with :ok <- validate_salesforce_id(contact_id) do
@@ -121,6 +124,8 @@ defmodule SocialScribe.SalesforceApi do
   end
 
   @impl true
+  @spec apply_updates(UserCredential.t(), String.t(), list(map())) ::
+          {:ok, :updated | :no_updates} | {:error, any()}
   def apply_updates(%UserCredential{} = credential, contact_id, updates_list)
       when is_list(updates_list) do
     applicable =

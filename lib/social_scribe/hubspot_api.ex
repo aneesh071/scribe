@@ -49,6 +49,7 @@ defmodule SocialScribe.HubspotApi do
   Automatically refreshes token on 401/expired errors and retries once.
   """
   @impl true
+  @spec search_contacts(UserCredential.t(), String.t()) :: {:ok, list(map())} | {:error, any()}
   def search_contacts(%UserCredential{} = credential, query) when is_binary(query) do
     with_token_refresh(credential, fn cred ->
       body = %{
@@ -76,6 +77,7 @@ defmodule SocialScribe.HubspotApi do
   Automatically refreshes token on 401/expired errors and retries once.
   """
   @impl true
+  @spec get_contact(UserCredential.t(), String.t()) :: {:ok, map()} | {:error, any()}
   def get_contact(%UserCredential{} = credential, contact_id) do
     with_token_refresh(credential, fn cred ->
       properties_param = Enum.join(@contact_properties, ",")
@@ -103,6 +105,7 @@ defmodule SocialScribe.HubspotApi do
   Automatically refreshes token on 401/expired errors and retries once.
   """
   @impl true
+  @spec update_contact(UserCredential.t(), String.t(), map()) :: {:ok, map()} | {:error, any()}
   def update_contact(%UserCredential{} = credential, contact_id, updates)
       when is_map(updates) do
     with_token_refresh(credential, fn cred ->
@@ -129,6 +132,8 @@ defmodule SocialScribe.HubspotApi do
   This is a convenience wrapper around update_contact/3.
   """
   @impl true
+  @spec apply_updates(UserCredential.t(), String.t(), list(map())) ::
+          {:ok, map() | :no_updates} | {:error, any()}
   def apply_updates(%UserCredential{} = credential, contact_id, updates_list)
       when is_list(updates_list) do
     updates_map =

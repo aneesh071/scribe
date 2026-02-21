@@ -52,10 +52,17 @@ defmodule SocialScribe.CalendarSyncronizer do
     if DateTime.compare(credential.expires_at || DateTime.utc_now(), DateTime.utc_now()) == :lt do
       case TokenRefresherApi.refresh_token(credential.refresh_token) do
         {:ok, new_token_data} ->
-          {:ok, updated_credential} =
-            Accounts.update_credential_tokens(credential, new_token_data)
+          case Accounts.update_credential_tokens(credential, new_token_data) do
+            {:ok, updated_credential} ->
+              {:ok, updated_credential.token}
 
-          {:ok, updated_credential.token}
+            {:error, reason} ->
+              Logger.error(
+                "Failed to persist refreshed token for credential #{credential.id}: #{inspect(reason)}"
+              )
+
+              {:error, {:token_persist_failed, reason}}
+          end
 
         {:error, reason} ->
           {:error, {:refresh_failed, reason}}

@@ -185,8 +185,8 @@ defmodule SocialScribeWeb.AuthController do
         conn
         |> UserAuth.log_in_user(user)
 
-      {:error, reason} ->
-        Logger.error("OAuth login failed: #{inspect(reason)}")
+      {:error, _reason} ->
+        Logger.error("OAuth login failed for provider callback")
 
         conn
         |> put_flash(:error, "There was an error signing you in.")

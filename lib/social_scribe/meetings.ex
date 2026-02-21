@@ -361,7 +361,7 @@ defmodule SocialScribe.Meetings do
 
       Enum.each(participants, fn participant_data ->
         participant_attrs = parse_participant_attrs(meeting, participant_data)
-        create_meeting_participant(participant_attrs)
+        {:ok, _participant} = create_meeting_participant(participant_attrs)
       end)
 
       Repo.preload(meeting, [:meeting_transcript, :meeting_participants])
