@@ -147,8 +147,6 @@ defmodule SocialScribe.Meetings do
     |> Repo.preload([:calendar_event, :recall_bot, :meeting_transcript, :meeting_participants])
   end
 
-  alias SocialScribe.Meetings.MeetingTranscript
-
   @doc """
   Returns the list of meeting_transcripts.
 
@@ -242,8 +240,6 @@ defmodule SocialScribe.Meetings do
   def change_meeting_transcript(%MeetingTranscript{} = meeting_transcript, attrs \\ %{}) do
     MeetingTranscript.changeset(meeting_transcript, attrs)
   end
-
-  alias SocialScribe.Meetings.MeetingParticipant
 
   @doc """
   Returns the list of meeting_participants.
@@ -450,25 +446,16 @@ defmodule SocialScribe.Meetings do
   Generates a prompt for a meeting.
   """
   def generate_prompt_for_meeting(%Meeting{} = meeting) do
-    case participants_to_string(meeting.meeting_participants) do
-      {:error, :no_participants} ->
-        {:error, :no_participants}
-
-      {:ok, participants_string} ->
-        case transcript_to_string(meeting.meeting_transcript) do
-          {:error, :no_transcript} ->
-            {:error, :no_transcript}
-
-          {:ok, transcript_string} ->
-            {:ok,
-             generate_prompt(
-               meeting.title,
-               meeting.recorded_at,
-               meeting.duration_seconds,
-               participants_string,
-               transcript_string
-             )}
-        end
+    with {:ok, participants_string} <- participants_to_string(meeting.meeting_participants),
+         {:ok, transcript_string} <- transcript_to_string(meeting.meeting_transcript) do
+      {:ok,
+       generate_prompt(
+         meeting.title,
+         meeting.recorded_at,
+         meeting.duration_seconds,
+         participants_string,
+         transcript_string
+       )}
     end
   end
 

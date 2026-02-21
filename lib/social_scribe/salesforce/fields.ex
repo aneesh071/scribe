@@ -21,5 +21,6 @@ defmodule SocialScribe.Salesforce.Fields do
     "MailingCountry" => :country
   }
 
+  @spec field_mapping() :: %{String.t() => atom()}
   def field_mapping, do: @field_mapping
 end

@@ -1,5 +1,13 @@
 defmodule SocialScribe.AIContentGenerator do
-  @moduledoc "Generates content using Google Gemini."
+  @moduledoc """
+  Generates AI content using Google Gemini.
+
+  Implements the `AIContentGeneratorApi` behaviour to provide:
+  - Follow-up email generation from meeting transcripts
+  - Automation content generation (social media posts)
+  - HubSpot CRM contact update suggestions
+  - Salesforce CRM contact update suggestions
+  """
 
   @behaviour SocialScribe.AIContentGeneratorApi
 

@@ -7,6 +7,7 @@ defmodule SocialScribe.HubspotSuggestions do
   alias SocialScribe.AIContentGeneratorApi
   alias SocialScribe.HubspotApi
   alias SocialScribe.Accounts.UserCredential
+  alias SocialScribe.Meetings.Meeting
 
   @field_categories %{
     "firstname" => "Contact Info",
@@ -62,6 +63,8 @@ defmodule SocialScribe.HubspotSuggestions do
   - context: explanation of where this was found in the transcript
   - apply: boolean indicating whether to apply this update (default false)
   """
+  @spec generate_suggestions(UserCredential.t(), String.t(), Meeting.t()) ::
+          {:ok, %{contact: map(), suggestions: list(map())}} | {:error, any()}
   def generate_suggestions(%UserCredential{} = credential, contact_id, meeting) do
     with {:ok, contact} <- HubspotApi.get_contact(credential, contact_id),
          {:ok, ai_suggestions} <- AIContentGeneratorApi.generate_hubspot_suggestions(meeting) do
@@ -83,7 +86,7 @@ defmodule SocialScribe.HubspotSuggestions do
             has_change: current_value != suggestion.value
           }
         end)
-        |> Enum.filter(fn s -> s.has_change end)
+        |> Enum.filter(fn s -> s.has_change == true end)
 
       {:ok, %{contact: contact, suggestions: suggestions}}
     end
@@ -93,6 +96,7 @@ defmodule SocialScribe.HubspotSuggestions do
   Generates suggestions without fetching contact data.
   Useful when contact hasn't been selected yet.
   """
+  @spec generate_suggestions_from_meeting(Meeting.t()) :: {:ok, list(map())} | {:error, any()}
   def generate_suggestions_from_meeting(meeting) do
     case AIContentGeneratorApi.generate_hubspot_suggestions(meeting) do
       {:ok, ai_suggestions} ->
@@ -123,6 +127,7 @@ defmodule SocialScribe.HubspotSuggestions do
   @doc """
   Merges AI suggestions with contact data to show current vs suggested values.
   """
+  @spec merge_with_contact(list(map()), map()) :: list(map())
   def merge_with_contact(suggestions, contact) when is_list(suggestions) do
     Enum.map(suggestions, fn suggestion ->
       current_value = get_contact_field(contact, suggestion.field)
@@ -134,7 +139,7 @@ defmodule SocialScribe.HubspotSuggestions do
           apply: true
       }
     end)
-    |> Enum.filter(fn s -> s.has_change end)
+    |> Enum.filter(fn s -> s.has_change == true end)
   end
 
   defp get_contact_field(contact, field) when is_map(contact) do

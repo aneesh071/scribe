@@ -318,7 +318,12 @@ defmodule SocialScribeWeb.ModalComponents do
   attr :target, :any, default: nil
 
   def suggestion_group(assigns) do
-    assigns = assign(assigns, :selected_count, Enum.count(assigns.suggestions, & &1.apply))
+    assigns =
+      assign(
+        assigns,
+        :selected_count,
+        Enum.count(assigns.suggestions, fn s -> s.apply == true end)
+      )
 
     ~H"""
     <div class={"rounded-lg border border-#{theme_class(@theme, "input")} overflow-hidden"}>

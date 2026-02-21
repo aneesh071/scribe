@@ -125,7 +125,7 @@ defmodule SocialScribe.SalesforceApi do
       when is_list(updates_list) do
     applicable =
       updates_list
-      |> Enum.filter(& &1[:apply])
+      |> Enum.filter(fn update -> update[:apply] == true end)
       |> Enum.into(%{}, fn update -> {update[:field], update[:new_value]} end)
 
     if map_size(applicable) == 0 do
@@ -139,6 +139,7 @@ defmodule SocialScribe.SalesforceApi do
   Formats a Salesforce API contact record into the internal representation.
   Uses :firstname/:lastname keys to match the contact_select UI component.
   """
+  @spec format_contact(map()) :: map() | nil
   def format_contact(%{"Id" => _} = record) do
     company =
       case record do
@@ -169,10 +170,7 @@ defmodule SocialScribe.SalesforceApi do
   end
 
   @doc false
-  # Escapes special characters for safe use in SOQL LIKE clauses.
-  # Backslash and single-quote are SOQL string literal escapes.
-  # Underscore and percent are SOQL LIKE wildcards that must be escaped
-  # to match literally in user-provided search queries.
+  @spec escape_soql_string(String.t()) :: String.t()
   def escape_soql_string(str) do
     str
     |> String.replace("\\", "\\\\")

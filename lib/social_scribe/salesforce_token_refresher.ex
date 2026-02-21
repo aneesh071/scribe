@@ -8,13 +8,11 @@ defmodule SocialScribe.SalesforceTokenRefresher do
   - issued_at is in milliseconds
   """
 
+  alias SocialScribe.Accounts.UserCredential
+
   require Logger
 
-  @salesforce_token_url Application.compile_env(
-                          :social_scribe,
-                          :salesforce_token_url,
-                          "https://login.salesforce.com/services/oauth2/token"
-                        )
+  @default_salesforce_token_url "https://login.salesforce.com/services/oauth2/token"
   @refresh_buffer_seconds 300
   @default_token_lifetime_seconds 7200
 
@@ -24,6 +22,7 @@ defmodule SocialScribe.SalesforceTokenRefresher do
   Makes a POST request to the Salesforce token endpoint with the stored refresh token.
   Returns `{:ok, token_data}` with the new access token on success.
   """
+  @spec refresh_token(String.t()) :: {:ok, map()} | {:error, any()}
   def refresh_token(refresh_token_string) do
     config = Application.get_env(:ueberauth, Ueberauth.Strategy.Salesforce.OAuth, [])
 
@@ -34,7 +33,10 @@ defmodule SocialScribe.SalesforceTokenRefresher do
       client_secret: config[:client_secret]
     }
 
-    case Tesla.post(client(), @salesforce_token_url, body) do
+    token_url =
+      Application.get_env(:social_scribe, :salesforce_token_url, @default_salesforce_token_url)
+
+    case Tesla.post(client(), token_url, body) do
       {:ok, %Tesla.Env{status: 200, body: response_body}} ->
         {:ok, response_body}
 
@@ -53,6 +55,7 @@ defmodule SocialScribe.SalesforceTokenRefresher do
 
   Returns `{:ok, updated_credential}` on success, `{:error, reason}` on failure.
   """
+  @spec refresh_credential(UserCredential.t()) :: {:ok, UserCredential.t()} | {:error, any()}
   def refresh_credential(credential) do
     case refresh_token(credential.refresh_token) do
       {:ok, response} ->
@@ -81,6 +84,7 @@ defmodule SocialScribe.SalesforceTokenRefresher do
   A token is considered expired if `expires_at` is nil or in the past.
   Returns `{:ok, credential}` with a valid token.
   """
+  @spec ensure_valid_token(UserCredential.t()) :: {:ok, UserCredential.t()} | {:error, any()}
   def ensure_valid_token(credential) do
     if token_expired_or_expiring?(credential) do
       refresh_credential(credential)

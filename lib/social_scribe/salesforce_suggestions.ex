@@ -5,6 +5,7 @@ defmodule SocialScribe.SalesforceSuggestions do
   """
 
   alias SocialScribe.AIContentGeneratorApi
+  alias SocialScribe.Meetings.Meeting
   alias SocialScribe.Salesforce.Fields
 
   @field_labels %{
@@ -45,6 +46,7 @@ defmodule SocialScribe.SalesforceSuggestions do
   Generates suggestions from a meeting transcript without contact data.
   Called first, then merged with contact after selection.
   """
+  @spec generate_suggestions_from_meeting(Meeting.t()) :: {:ok, list(map())} | {:error, any()}
   def generate_suggestions_from_meeting(meeting) do
     case AIContentGeneratorApi.generate_salesforce_suggestions(meeting) do
       {:ok, ai_suggestions} ->
@@ -76,6 +78,7 @@ defmodule SocialScribe.SalesforceSuggestions do
   Merges AI suggestions with actual contact data.
   Fills in current_value and filters out suggestions where value hasn't changed.
   """
+  @spec merge_with_contact(list(map()), map()) :: list(map())
   def merge_with_contact(suggestions, contact) when is_list(suggestions) do
     suggestions
     |> Enum.map(fn suggestion ->
@@ -89,6 +92,6 @@ defmodule SocialScribe.SalesforceSuggestions do
           apply: true
       }
     end)
-    |> Enum.filter(& &1.has_change)
+    |> Enum.filter(fn suggestion -> suggestion.has_change == true end)
   end
 end

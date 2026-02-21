@@ -59,7 +59,12 @@ defmodule SocialScribeWeb.MeetingLive.SalesforceModalComponent do
   attr :expanded_groups, :map, required: true
 
   defp suggestions_section(assigns) do
-    assigns = assign(assigns, :selected_count, Enum.count(assigns.suggestions, & &1.apply))
+    assigns =
+      assign(
+        assigns,
+        :selected_count,
+        Enum.count(assigns.suggestions, fn s -> s.apply == true end)
+      )
 
     category_order = [
       "Contact Info",
@@ -251,7 +256,7 @@ defmodule SocialScribeWeb.MeetingLive.SalesforceModalComponent do
     group_suggestions =
       Enum.filter(socket.assigns.suggestions, &(&1.category == group_name))
 
-    all_applied = Enum.all?(group_suggestions, & &1.apply)
+    all_applied = Enum.all?(group_suggestions, fn s -> s.apply == true end)
 
     updated =
       Enum.map(socket.assigns.suggestions, fn s ->
