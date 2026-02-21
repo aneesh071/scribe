@@ -101,6 +101,44 @@ defmodule SocialScribe.SalesforceSuggestionsTest do
       assert phone.has_change == true
     end
 
+    test "filters out AI-hallucinated field names not in the allowlist" do
+      import Mox
+      setup_mox()
+
+      meeting = %{id: 1}
+
+      SocialScribe.AIContentGeneratorMock
+      |> expect(:generate_salesforce_suggestions, fn _meeting ->
+        {:ok,
+         [
+           %{field: "Phone", value: "555-9999", context: "gave phone number", timestamp: "02:30"},
+           %{
+             field: "Birthday",
+             value: "1990-01-01",
+             context: "mentioned birthday",
+             timestamp: "03:00"
+           },
+           %{
+             field: "AnnualRevenue",
+             value: "1000000",
+             context: "discussed revenue",
+             timestamp: "04:00"
+           },
+           %{field: "Title", value: "CTO", context: "promoted to CTO", timestamp: "05:00"}
+         ]}
+      end)
+
+      assert {:ok, suggestions} = SalesforceSuggestions.generate_suggestions_from_meeting(meeting)
+
+      # Only Phone and Title are in the allowlist; Birthday and AnnualRevenue are not
+      assert length(suggestions) == 2
+      fields = Enum.map(suggestions, & &1.field)
+      assert "Phone" in fields
+      assert "Title" in fields
+      refute "Birthday" in fields
+      refute "AnnualRevenue" in fields
+    end
+
     defp setup_mox do
       Mox.verify_on_exit!()
     end

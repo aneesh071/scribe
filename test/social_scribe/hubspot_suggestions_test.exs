@@ -94,4 +94,44 @@ defmodule SocialScribe.HubspotSuggestionsTest do
       assert hd(result).label == "Phone"
     end
   end
+
+  describe "generate_suggestions_from_meeting/1" do
+    test "filters out AI-hallucinated field names not in the allowlist" do
+      import Mox
+      verify_on_exit!()
+
+      meeting = %{id: 1}
+
+      SocialScribe.AIContentGeneratorMock
+      |> expect(:generate_hubspot_suggestions, fn _meeting ->
+        {:ok,
+         [
+           %{field: "phone", value: "555-9999", context: "gave phone number", timestamp: "02:30"},
+           %{
+             field: "birthday",
+             value: "1990-01-01",
+             context: "mentioned birthday",
+             timestamp: "03:00"
+           },
+           %{
+             field: "annual_revenue",
+             value: "1000000",
+             context: "discussed revenue",
+             timestamp: "04:00"
+           },
+           %{field: "jobtitle", value: "CTO", context: "promoted to CTO", timestamp: "05:00"}
+         ]}
+      end)
+
+      assert {:ok, suggestions} = HubspotSuggestions.generate_suggestions_from_meeting(meeting)
+
+      # Only phone and jobtitle are in the allowlist; birthday and annual_revenue are not
+      assert length(suggestions) == 2
+      fields = Enum.map(suggestions, & &1.field)
+      assert "phone" in fields
+      assert "jobtitle" in fields
+      refute "birthday" in fields
+      refute "annual_revenue" in fields
+    end
+  end
 end
