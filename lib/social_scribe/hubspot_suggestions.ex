@@ -44,6 +44,9 @@ defmodule SocialScribe.HubspotSuggestions do
     "twitter_handle" => "Twitter"
   }
 
+  # Allowlist derived from @field_labels — guards against AI-hallucinated field names
+  @allowed_fields MapSet.new(Map.keys(@field_labels))
+
   @doc """
   Generates suggested updates for a HubSpot contact based on a meeting transcript.
 
@@ -60,6 +63,7 @@ defmodule SocialScribe.HubspotSuggestions do
          {:ok, ai_suggestions} <- AIContentGeneratorApi.generate_hubspot_suggestions(meeting) do
       suggestions =
         ai_suggestions
+        |> Enum.filter(fn suggestion -> MapSet.member?(@allowed_fields, suggestion.field) end)
         |> Enum.map(fn suggestion ->
           field = suggestion.field
           current_value = get_contact_field(contact, field)
@@ -90,6 +94,7 @@ defmodule SocialScribe.HubspotSuggestions do
       {:ok, ai_suggestions} ->
         suggestions =
           ai_suggestions
+          |> Enum.filter(fn suggestion -> MapSet.member?(@allowed_fields, suggestion.field) end)
           |> Enum.map(fn suggestion ->
             %{
               field: suggestion.field,

@@ -15,6 +15,7 @@ defmodule SocialScribe.SalesforceApi do
   require Logger
 
   alias SocialScribe.Accounts.UserCredential
+  alias SocialScribe.Salesforce.Fields
   alias SocialScribe.SalesforceTokenRefresher
 
   @api_version "v62.0"
@@ -25,22 +26,8 @@ defmodule SocialScribe.SalesforceApi do
     MailingPostalCode MailingCountry
   )
 
-  # Maps Salesforce PascalCase to internal atom keys matching HubSpot format
-  # (contact_select component expects :firstname, :lastname, etc.)
-  @field_mapping %{
-    "FirstName" => :firstname,
-    "LastName" => :lastname,
-    "Email" => :email,
-    "Phone" => :phone,
-    "MobilePhone" => :mobilephone,
-    "Title" => :jobtitle,
-    "Department" => :department,
-    "MailingStreet" => :address,
-    "MailingCity" => :city,
-    "MailingState" => :state,
-    "MailingPostalCode" => :zip,
-    "MailingCountry" => :country
-  }
+  # Salesforce IDs are 15 or 18 character alphanumeric strings
+  @salesforce_id_pattern ~r/\A[a-zA-Z0-9]{15,18}\z/
 
   defp client(credential) do
     Tesla.client([
@@ -78,48 +65,57 @@ defmodule SocialScribe.SalesforceApi do
   end
 
   @impl true
-  def get_contact(%UserCredential{} = credential, contact_id) do
-    with_token_refresh(credential, fn cred ->
-      fields = Enum.join(@contact_fields, ",")
+  def get_contact(%UserCredential{} = credential, contact_id)
+      when is_binary(contact_id) do
+    if not Regex.match?(@salesforce_id_pattern, contact_id) do
+      {:error, :invalid_contact_id}
+    else
+      with_token_refresh(credential, fn cred ->
+        fields = Enum.join(@contact_fields, ",")
 
-      case Tesla.get(
-             client(cred),
-             "/services/data/#{@api_version}/sobjects/Contact/#{contact_id}?fields=#{fields}"
-           ) do
-        {:ok, %Tesla.Env{status: 200, body: body}} ->
-          {:ok, format_contact(body)}
+        case Tesla.get(
+               client(cred),
+               "/services/data/#{@api_version}/sobjects/Contact/#{contact_id}?fields=#{fields}"
+             ) do
+          {:ok, %Tesla.Env{status: 200, body: body}} ->
+            {:ok, format_contact(body)}
 
-        {:ok, %Tesla.Env{status: 404}} ->
-          {:error, :not_found}
+          {:ok, %Tesla.Env{status: 404}} ->
+            {:error, :not_found}
 
-        {:ok, %Tesla.Env{status: status, body: body}} ->
-          {:error, {:api_error, status, body}}
+          {:ok, %Tesla.Env{status: status, body: body}} ->
+            {:error, {:api_error, status, body}}
 
-        {:error, reason} ->
-          {:error, {:http_error, reason}}
-      end
-    end)
+          {:error, reason} ->
+            {:error, {:http_error, reason}}
+        end
+      end)
+    end
   end
 
   @impl true
   def update_contact(%UserCredential{} = credential, contact_id, updates)
-      when is_map(updates) do
-    with_token_refresh(credential, fn cred ->
-      case Tesla.patch(
-             client(cred),
-             "/services/data/#{@api_version}/sobjects/Contact/#{contact_id}",
-             updates
-           ) do
-        {:ok, %Tesla.Env{status: status}} when status in [200, 204] ->
-          {:ok, :updated}
+      when is_binary(contact_id) and is_map(updates) do
+    if not Regex.match?(@salesforce_id_pattern, contact_id) do
+      {:error, :invalid_contact_id}
+    else
+      with_token_refresh(credential, fn cred ->
+        case Tesla.patch(
+               client(cred),
+               "/services/data/#{@api_version}/sobjects/Contact/#{contact_id}",
+               updates
+             ) do
+          {:ok, %Tesla.Env{status: status}} when status in [200, 204] ->
+            {:ok, :updated}
 
-        {:ok, %Tesla.Env{status: status, body: body}} ->
-          {:error, {:api_error, status, body}}
+          {:ok, %Tesla.Env{status: status, body: body}} ->
+            {:error, {:api_error, status, body}}
 
-        {:error, reason} ->
-          {:error, {:http_error, reason}}
-      end
-    end)
+          {:error, reason} ->
+            {:error, {:http_error, reason}}
+        end
+      end)
+    end
   end
 
   @impl true
@@ -141,7 +137,7 @@ defmodule SocialScribe.SalesforceApi do
   Formats a Salesforce API contact record into the internal representation.
   Uses :firstname/:lastname keys to match the contact_select UI component.
   """
-  def format_contact(record) do
+  def format_contact(%{"Id" => _} = record) do
     company =
       case record do
         %{"Account" => %{"Name" => name}} -> name
@@ -149,7 +145,7 @@ defmodule SocialScribe.SalesforceApi do
       end
 
     base =
-      Enum.reduce(@field_mapping, %{}, fn {sf_field, internal_key}, acc ->
+      Enum.reduce(Fields.field_mapping(), %{}, fn {sf_field, internal_key}, acc ->
         Map.put(acc, internal_key, record[sf_field])
       end)
 
@@ -158,6 +154,8 @@ defmodule SocialScribe.SalesforceApi do
     |> Map.put(:company, company)
     |> Map.put(:display_name, build_display_name(record))
   end
+
+  def format_contact(_), do: nil
 
   defp build_display_name(record) do
     name =
@@ -168,8 +166,12 @@ defmodule SocialScribe.SalesforceApi do
     if name == "", do: record["Email"] || "Unknown", else: name
   end
 
-  # Escapes user input for safe inclusion in SOQL string literals.
-  defp escape_soql_string(str) do
+  @doc false
+  # Escapes special characters for safe use in SOQL LIKE clauses.
+  # Backslash and single-quote are SOQL string literal escapes.
+  # Underscore and percent are SOQL LIKE wildcards that must be escaped
+  # to match literally in user-provided search queries.
+  def escape_soql_string(str) do
     str
     |> String.replace("\\", "\\\\")
     |> String.replace("'", "\\'")
