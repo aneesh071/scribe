@@ -16,14 +16,13 @@ defmodule SocialScribeWeb.HomeLive do
   @impl true
   def mount(_params, _session, socket) do
     if connected?(socket), do: send(self(), :sync_calendars)
+    {:ok, assign(socket, page_title: "Upcoming Meetings", events: [], loading: true)}
+  end
 
-    socket =
-      socket
-      |> assign(:page_title, "Upcoming Meetings")
-      |> assign(:events, Calendar.list_upcoming_events(socket.assigns.current_user))
-      |> assign(:loading, true)
-
-    {:ok, socket}
+  @impl true
+  def handle_params(_params, _uri, socket) do
+    events = Calendar.list_upcoming_events(socket.assigns.current_user)
+    {:noreply, assign(socket, :events, events)}
   end
 
   @impl true

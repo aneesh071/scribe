@@ -11,56 +11,72 @@ defmodule SocialScribeWeb.UserSettingsLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    current_user = socket.assigns.current_user
-
-    google_accounts = Accounts.list_user_credentials(current_user, provider: "google")
-
-    linkedin_accounts = Accounts.list_user_credentials(current_user, provider: "linkedin")
-
-    facebook_accounts = Accounts.list_user_credentials(current_user, provider: "facebook")
-
-    hubspot_accounts = Accounts.list_user_credentials(current_user, provider: "hubspot")
-
-    salesforce_accounts = Accounts.list_user_credentials(current_user, provider: "salesforce")
-
-    user_bot_preference =
-      Bots.get_user_bot_preference(current_user.id) || %Bots.UserBotPreference{}
-
-    changeset = Bots.change_user_bot_preference(user_bot_preference)
-
-    socket =
-      socket
-      |> assign(:page_title, "User Settings")
-      |> assign(:google_accounts, google_accounts)
-      |> assign(:linkedin_accounts, linkedin_accounts)
-      |> assign(:facebook_accounts, facebook_accounts)
-      |> assign(:hubspot_accounts, hubspot_accounts)
-      |> assign(:salesforce_accounts, salesforce_accounts)
-      |> assign(:user_bot_preference, user_bot_preference)
-      |> assign(:user_bot_preference_form, to_form(changeset))
-
-    {:ok, socket}
+    {:ok,
+     assign(socket,
+       page_title: "User Settings",
+       google_accounts: [],
+       linkedin_accounts: [],
+       facebook_accounts: [],
+       hubspot_accounts: [],
+       salesforce_accounts: [],
+       user_bot_preference: %Bots.UserBotPreference{},
+       user_bot_preference_form:
+         to_form(Bots.change_user_bot_preference(%Bots.UserBotPreference{}))
+     )}
   end
 
   @impl true
   def handle_params(_params, _uri, socket) do
-    case socket.assigns.live_action do
-      :facebook_pages ->
-        facebook_page_options =
-          socket.assigns.current_user
-          |> Accounts.list_linked_facebook_pages()
-          |> Enum.map(&{&1.page_name, &1.id})
+    current_user = socket.assigns.current_user
 
-        socket =
+    user_bot_preference =
+      Bots.get_user_bot_preference(current_user.id) || %Bots.UserBotPreference{}
+
+    socket =
+      socket
+      |> assign(
+        :google_accounts,
+        Accounts.list_user_credentials(current_user, provider: "google")
+      )
+      |> assign(
+        :linkedin_accounts,
+        Accounts.list_user_credentials(current_user, provider: "linkedin")
+      )
+      |> assign(
+        :facebook_accounts,
+        Accounts.list_user_credentials(current_user, provider: "facebook")
+      )
+      |> assign(
+        :hubspot_accounts,
+        Accounts.list_user_credentials(current_user, provider: "hubspot")
+      )
+      |> assign(
+        :salesforce_accounts,
+        Accounts.list_user_credentials(current_user, provider: "salesforce")
+      )
+      |> assign(:user_bot_preference, user_bot_preference)
+      |> assign(
+        :user_bot_preference_form,
+        to_form(Bots.change_user_bot_preference(user_bot_preference))
+      )
+
+    socket =
+      case socket.assigns.live_action do
+        :facebook_pages ->
+          facebook_page_options =
+            current_user
+            |> Accounts.list_linked_facebook_pages()
+            |> Enum.map(&{&1.page_name, &1.id})
+
           socket
           |> assign(:facebook_page_options, facebook_page_options)
           |> assign(:facebook_page_form, to_form(%{"facebook_page" => ""}))
 
-        {:noreply, socket}
+        _ ->
+          socket
+      end
 
-      _ ->
-        {:noreply, socket}
-    end
+    {:noreply, socket}
   end
 
   @impl true

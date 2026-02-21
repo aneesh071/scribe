@@ -19,66 +19,70 @@ defmodule SocialScribeWeb.MeetingLive.Show do
   alias SocialScribe.SalesforceSuggestions
 
   @impl true
-  def mount(%{"id" => meeting_id}, _session, socket) do
-    meeting = Meetings.get_meeting_with_details(meeting_id)
+  def mount(_params, _session, socket) do
+    {:ok,
+     assign(socket,
+       page_title: "Meeting Details",
+       meeting: nil,
+       automation_results: [],
+       user_has_automations: false,
+       hubspot_credential: nil,
+       salesforce_credential: nil,
+       last_hubspot_contact: nil,
+       last_salesforce_contact: nil,
+       follow_up_email_form: to_form(%{"follow_up_email" => ""})
+     )}
+  end
 
-    user_has_automations =
-      Automations.list_active_user_automations(socket.assigns.current_user.id)
-      |> length()
-      |> Kernel.>(0)
+  @impl true
+  def handle_params(%{"id" => meeting_id} = params, _uri, socket) do
+    case Meetings.get_meeting_with_details(meeting_id) do
+      nil ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Meeting not found.")
+         |> push_navigate(to: ~p"/dashboard/meetings")}
 
-    automation_results = Automations.list_automation_results_for_meeting(meeting_id)
+      meeting ->
+        if meeting.calendar_event.user_id != socket.assigns.current_user.id do
+          {:noreply,
+           socket
+           |> put_flash(:error, "You do not have permission to view this meeting.")
+           |> push_navigate(to: ~p"/dashboard/meetings")}
+        else
+          user_id = socket.assigns.current_user.id
 
-    if meeting.calendar_event.user_id != socket.assigns.current_user.id do
-      socket =
-        socket
-        |> put_flash(:error, "You do not have permission to view this meeting.")
-        |> redirect(to: ~p"/dashboard/meetings")
+          socket =
+            socket
+            |> assign(:page_title, "Meeting Details: #{meeting.title}")
+            |> assign(:meeting, meeting)
+            |> assign(
+              :automation_results,
+              Automations.list_automation_results_for_meeting(meeting_id)
+            )
+            |> assign(
+              :user_has_automations,
+              Automations.list_active_user_automations(user_id) |> Enum.any?()
+            )
+            |> assign(:hubspot_credential, Accounts.get_user_hubspot_credential(user_id))
+            |> assign(:salesforce_credential, Accounts.get_user_salesforce_credential(user_id))
+            |> maybe_load_automation_result(params)
 
-      {:error, socket}
-    else
-      user_id = socket.assigns.current_user.id
-      hubspot_credential = Accounts.get_user_hubspot_credential(user_id)
-      salesforce_credential = Accounts.get_user_salesforce_credential(user_id)
-
-      socket =
-        socket
-        |> assign(:page_title, "Meeting Details: #{meeting.title}")
-        |> assign(:meeting, meeting)
-        |> assign(:automation_results, automation_results)
-        |> assign(:user_has_automations, user_has_automations)
-        |> assign(:hubspot_credential, hubspot_credential)
-        |> assign(:salesforce_credential, salesforce_credential)
-        |> assign(:last_hubspot_contact, nil)
-        |> assign(:last_salesforce_contact, nil)
-        |> assign(
-          :follow_up_email_form,
-          to_form(%{
-            "follow_up_email" => ""
-          })
-        )
-
-      {:ok, socket}
+          {:noreply, socket}
+        end
     end
   end
 
-  @impl true
-  def handle_params(%{"automation_result_id" => automation_result_id}, _uri, socket) do
+  defp maybe_load_automation_result(socket, %{"automation_result_id" => automation_result_id}) do
     automation_result = Automations.get_automation_result!(automation_result_id)
     automation = Automations.get_automation!(automation_result.automation_id)
 
-    socket =
-      socket
-      |> assign(:automation_result, automation_result)
-      |> assign(:automation, automation)
-
-    {:noreply, socket}
+    socket
+    |> assign(:automation_result, automation_result)
+    |> assign(:automation, automation)
   end
 
-  @impl true
-  def handle_params(_params, _uri, socket) do
-    {:noreply, socket}
-  end
+  defp maybe_load_automation_result(socket, _params), do: socket
 
   @impl true
   def handle_event("validate-follow-up-email", params, socket) do
@@ -116,7 +120,7 @@ defmodule SocialScribeWeb.MeetingLive.Show do
   def handle_info({:generate_suggestions, contact, meeting, _credential}, socket) do
     case HubspotSuggestions.generate_suggestions_from_meeting(meeting) do
       {:ok, suggestions} ->
-        merged = HubspotSuggestions.merge_with_contact(suggestions, normalize_contact(contact))
+        merged = HubspotSuggestions.merge_with_contact(suggestions, contact)
 
         send_update(SocialScribeWeb.MeetingLive.HubspotModalComponent,
           id: "hubspot-modal",
@@ -227,11 +231,6 @@ defmodule SocialScribeWeb.MeetingLive.Show do
 
         {:noreply, socket}
     end
-  end
-
-  defp normalize_contact(contact) do
-    # Contact is already formatted with atom keys from HubspotApi.format_contact
-    contact
   end
 
   defp format_duration(nil), do: "N/A"
