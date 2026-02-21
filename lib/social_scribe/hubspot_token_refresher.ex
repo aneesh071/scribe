@@ -5,7 +5,7 @@ defmodule SocialScribe.HubspotTokenRefresher do
 
   @hubspot_token_url "https://api.hubapi.com/oauth/v1/token"
 
-  def client do
+  defp client do
     Tesla.client([
       {Tesla.Middleware.FormUrlencoded,
        encode: &Plug.Conn.Query.encode/1, decode: &Plug.Conn.Query.decode/1},
@@ -66,6 +66,10 @@ defmodule SocialScribe.HubspotTokenRefresher do
   Ensures a credential has a valid (non-expired) token.
   Refreshes if expired or about to expire (within 5 minutes).
   """
+  def ensure_valid_token(%{expires_at: nil} = credential) do
+    refresh_credential(credential)
+  end
+
   def ensure_valid_token(credential) do
     buffer_seconds = 300
 

@@ -175,9 +175,10 @@
   />
 </.modal>
 
-<.hubspot_modal
+<.crm_modal
   :if={@live_action == :hubspot && @hubspot_credential}
   id="hubspot-modal-wrapper"
+  theme="hubspot"
   show
   on_cancel={JS.patch(~p"/dashboard/meetings/#{@meeting}")}
 >
@@ -187,12 +188,14 @@
     meeting={@meeting}
     credential={@hubspot_credential}
     modal_id="hubspot-modal-wrapper"
+    last_contact={@last_hubspot_contact}
   />
-</.hubspot_modal>
+</.crm_modal>
 
-<.salesforce_modal
+<.crm_modal
   :if={@live_action == :salesforce && @salesforce_credential}
   id="salesforce-modal-wrapper"
+  theme="salesforce"
   show
   on_cancel={JS.patch(~p"/dashboard/meetings/#{@meeting}")}
 >
@@ -202,5 +205,6 @@
     meeting={@meeting}
     credential={@salesforce_credential}
     modal_id="salesforce-modal-wrapper"
+    last_contact={@last_salesforce_contact}
   />
-</.salesforce_modal>
+</.crm_modal>

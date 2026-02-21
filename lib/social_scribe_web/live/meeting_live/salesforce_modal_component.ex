@@ -1,4 +1,12 @@
 defmodule SocialScribeWeb.MeetingLive.SalesforceModalComponent do
+  @moduledoc """
+  LiveView component for the Salesforce CRM contact update modal.
+
+  Two-phase interaction: search for a Salesforce contact, then review
+  AI-generated field update suggestions grouped by category. The parent
+  LiveView (MeetingLive.Show) handles async API calls and sends results
+  back via send_update/2.
+  """
   use SocialScribeWeb, :live_component
 
   import SocialScribeWeb.ModalComponents
@@ -118,7 +126,6 @@ defmodule SocialScribeWeb.MeetingLive.SalesforceModalComponent do
       socket
       |> assign(assigns)
       |> maybe_select_all_suggestions(assigns)
-      |> assign_new(:step, fn -> :search end)
       |> assign_new(:query, fn -> "" end)
       |> assign_new(:contacts, fn -> [] end)
       |> assign_new(:selected_contact, fn -> nil end)
@@ -128,9 +135,25 @@ defmodule SocialScribeWeb.MeetingLive.SalesforceModalComponent do
       |> assign_new(:dropdown_open, fn -> false end)
       |> assign_new(:error, fn -> nil end)
       |> assign_new(:expanded_groups, fn -> %{} end)
+      |> maybe_restore_last_contact(assigns)
 
     {:ok, socket}
   end
+
+  defp maybe_restore_last_contact(socket, %{last_contact: contact})
+       when not is_nil(contact) and is_nil(socket.assigns.selected_contact) do
+    socket = assign(socket, selected_contact: contact, loading: true)
+
+    send(
+      self(),
+      {:generate_salesforce_suggestions, contact, socket.assigns.meeting,
+       socket.assigns.credential}
+    )
+
+    socket
+  end
+
+  defp maybe_restore_last_contact(socket, _assigns), do: socket
 
   defp maybe_select_all_suggestions(socket, %{suggestions: suggestions})
        when is_list(suggestions) do
@@ -170,7 +193,10 @@ defmodule SocialScribeWeb.MeetingLive.SalesforceModalComponent do
       socket = assign(socket, dropdown_open: true, searching: true)
 
       query =
-        "#{socket.assigns.selected_contact.firstname} #{socket.assigns.selected_contact.lastname}"
+        case socket.assigns.selected_contact do
+          %{firstname: fname, lastname: lname} -> "#{fname} #{lname}"
+          _ -> ""
+        end
 
       send(self(), {:salesforce_search, query, socket.assigns.credential})
       {:noreply, socket}
@@ -208,7 +234,6 @@ defmodule SocialScribeWeb.MeetingLive.SalesforceModalComponent do
   def handle_event("clear_contact", _params, socket) do
     {:noreply,
      assign(socket,
-       step: :search,
        selected_contact: nil,
        suggestions: [],
        loading: false,

@@ -112,7 +112,6 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
       socket
       |> assign(assigns)
       |> maybe_select_all_suggestions(assigns)
-      |> assign_new(:step, fn -> :search end)
       |> assign_new(:query, fn -> "" end)
       |> assign_new(:contacts, fn -> [] end)
       |> assign_new(:selected_contact, fn -> nil end)
@@ -122,9 +121,24 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
       |> assign_new(:dropdown_open, fn -> false end)
       |> assign_new(:error, fn -> nil end)
       |> assign_new(:expanded_groups, fn -> %{} end)
+      |> maybe_restore_last_contact(assigns)
 
     {:ok, socket}
   end
+
+  defp maybe_restore_last_contact(socket, %{last_contact: contact})
+       when not is_nil(contact) and is_nil(socket.assigns.selected_contact) do
+    socket = assign(socket, selected_contact: contact, loading: true)
+
+    send(
+      self(),
+      {:generate_suggestions, contact, socket.assigns.meeting, socket.assigns.credential}
+    )
+
+    socket
+  end
+
+  defp maybe_restore_last_contact(socket, _assigns), do: socket
 
   defp maybe_select_all_suggestions(socket, %{suggestions: suggestions})
        when is_list(suggestions) do
@@ -165,7 +179,10 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
       socket = assign(socket, dropdown_open: true, searching: true)
 
       query =
-        "#{socket.assigns.selected_contact.firstname} #{socket.assigns.selected_contact.lastname}"
+        case socket.assigns.selected_contact do
+          %{firstname: fname, lastname: lname} -> "#{fname} #{lname}"
+          _ -> ""
+        end
 
       send(self(), {:hubspot_search, query, socket.assigns.credential})
       {:noreply, socket}
@@ -202,7 +219,6 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
   def handle_event("clear_contact", _params, socket) do
     {:noreply,
      assign(socket,
-       step: :search,
        selected_contact: nil,
        suggestions: [],
        loading: false,
