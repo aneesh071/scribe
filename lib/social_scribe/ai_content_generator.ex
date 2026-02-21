@@ -19,7 +19,7 @@ defmodule SocialScribe.AIContentGenerator do
   @gemini_model "gemini-2.0-flash"
   @gemini_api_base_url "https://generativelanguage.googleapis.com/v1beta/models"
 
-  @impl SocialScribe.AIContentGeneratorApi
+  @impl true
   def generate_follow_up_email(meeting) do
     case Meetings.generate_prompt_for_meeting(meeting) do
       {:error, reason} ->
@@ -38,7 +38,7 @@ defmodule SocialScribe.AIContentGenerator do
     end
   end
 
-  @impl SocialScribe.AIContentGeneratorApi
+  @impl true
   def generate_automation(automation, meeting) do
     case Meetings.generate_prompt_for_meeting(meeting) do
       {:error, reason} ->
@@ -55,7 +55,7 @@ defmodule SocialScribe.AIContentGenerator do
     end
   end
 
-  @impl SocialScribe.AIContentGeneratorApi
+  @impl true
   def generate_hubspot_suggestions(meeting) do
     case Meetings.generate_prompt_for_meeting(meeting) do
       {:error, reason} ->
@@ -111,7 +111,7 @@ defmodule SocialScribe.AIContentGenerator do
     end
   end
 
-  @impl SocialScribe.AIContentGeneratorApi
+  @impl true
   def generate_salesforce_suggestions(meeting) do
     case Meetings.generate_prompt_for_meeting(meeting) do
       {:error, reason} ->
