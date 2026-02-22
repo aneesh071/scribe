@@ -339,12 +339,12 @@ defmodule SocialScribe.Accounts do
   @spec find_or_create_hubspot_credential(User.t(), map()) ::
           {:ok, UserCredential.t()} | {:error, Ecto.Changeset.t()}
   def find_or_create_hubspot_credential(user, attrs) do
-    case get_user_credential(user, "hubspot", attrs.uid) do
+    case Repo.get_by(UserCredential, provider: "hubspot", uid: attrs.uid) do
       nil ->
         create_user_credential(attrs)
 
       %UserCredential{} = credential ->
-        update_user_credential(credential, attrs)
+        update_user_credential(credential, Map.put(attrs, :user_id, user.id))
     end
   end
 
@@ -371,7 +371,7 @@ defmodule SocialScribe.Accounts do
   @spec find_or_create_salesforce_credential(User.t(), map()) ::
           {:ok, UserCredential.t()} | {:error, Ecto.Changeset.t()}
   def find_or_create_salesforce_credential(user, attrs) do
-    case get_user_credential(user, "salesforce", attrs.uid) do
+    case Repo.get_by(UserCredential, provider: "salesforce", uid: attrs.uid) do
       nil ->
         %UserCredential{}
         |> UserCredential.salesforce_changeset(attrs)
@@ -379,7 +379,7 @@ defmodule SocialScribe.Accounts do
 
       %UserCredential{} = credential ->
         credential
-        |> UserCredential.salesforce_changeset(attrs)
+        |> UserCredential.salesforce_changeset(Map.put(attrs, :user_id, user.id))
         |> Repo.update()
     end
   end
@@ -502,6 +502,12 @@ defmodule SocialScribe.Accounts do
   """
   @spec get_facebook_page_credential!(integer()) :: FacebookPageCredential.t()
   def get_facebook_page_credential!(id), do: Repo.get!(FacebookPageCredential, id)
+
+  @doc """
+  Gets a single facebook_page_credential. Returns `nil` if not found.
+  """
+  @spec get_facebook_page_credential(integer()) :: FacebookPageCredential.t() | nil
+  def get_facebook_page_credential(id), do: Repo.get(FacebookPageCredential, id)
 
   @spec get_user_selected_facebook_page_credential(User.t()) :: FacebookPageCredential.t() | nil
   def get_user_selected_facebook_page_credential(user) do

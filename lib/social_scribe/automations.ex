@@ -45,6 +45,12 @@ defmodule SocialScribe.Automations do
   def get_automation!(id), do: Repo.get!(Automation, id)
 
   @doc """
+  Gets a single automation. Returns `nil` if not found.
+  """
+  @spec get_automation(integer()) :: Automation.t() | nil
+  def get_automation(id), do: Repo.get(Automation, id)
+
+  @doc """
   Checks if a user can create an automation for a given platform.
   """
   @spec can_create_automation?(integer(), atom()) :: boolean()
@@ -264,6 +270,12 @@ defmodule SocialScribe.Automations do
   """
   @spec get_automation_result!(integer()) :: AutomationResult.t()
   def get_automation_result!(id), do: Repo.get!(AutomationResult, id)
+
+  @doc """
+  Gets a single automation_result. Returns `nil` if not found.
+  """
+  @spec get_automation_result(integer()) :: AutomationResult.t() | nil
+  def get_automation_result(id), do: Repo.get(AutomationResult, id)
 
   @doc """
   Creates a automation_result.

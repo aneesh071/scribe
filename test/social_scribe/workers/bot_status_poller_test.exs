@@ -235,7 +235,7 @@ defmodule SocialScribe.Workers.BotStatusPollerTest do
         {:error, :timeout}
       end)
 
-      assert BotStatusPoller.perform(%Oban.Job{}) == :ok
+      assert {:error, _} = BotStatusPoller.perform(%Oban.Job{})
 
       # Verify bot status was updated to 'polling_error'
       updated_bot = Bots.get_recall_bot!(bot_record.id)
@@ -265,7 +265,7 @@ defmodule SocialScribe.Workers.BotStatusPollerTest do
         {:error, :transcript_fetch_failed}
       end)
 
-      assert BotStatusPoller.perform(%Oban.Job{}) == :ok
+      assert {:error, _} = BotStatusPoller.perform(%Oban.Job{})
 
       # Bot status should still be "done" because the get_bot call succeeded
       updated_bot = Bots.get_recall_bot!(bot_record.id)

@@ -35,16 +35,24 @@ defmodule SocialScribe.Workers.SalesforceTokenRefresher do
   end
 
   defp refresh_all(credentials) do
-    Enum.each(credentials, fn credential ->
-      case SalesforceTokenRefresher.refresh_credential(credential) do
-        {:ok, _} ->
-          Logger.info("Refreshed Salesforce token for credential #{credential.id}")
+    results =
+      Enum.map(credentials, fn credential ->
+        case SalesforceTokenRefresher.refresh_credential(credential) do
+          {:ok, _} ->
+            Logger.info("Refreshed Salesforce token for credential #{credential.id}")
+            :ok
 
-        {:error, _reason} ->
-          Logger.error("Failed to refresh Salesforce token for credential #{credential.id}")
-      end
-    end)
+          {:error, reason} ->
+            Logger.error(
+              "Failed to refresh Salesforce token for credential #{credential.id}: #{inspect(reason)}"
+            )
 
-    :ok
+            {:error, credential.id}
+        end
+      end)
+
+    failures = Enum.filter(results, &match?({:error, _}, &1))
+
+    if Enum.empty?(failures), do: :ok, else: {:error, "#{length(failures)} refresh(es) failed"}
   end
 end

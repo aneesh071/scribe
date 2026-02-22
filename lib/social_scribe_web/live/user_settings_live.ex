@@ -112,19 +112,23 @@ defmodule SocialScribeWeb.UserSettingsLive do
 
   @impl true
   def handle_event("select_facebook_page", %{"facebook_page" => facebook_page}, socket) do
-    facebook_page_credential = Accounts.get_facebook_page_credential!(facebook_page)
+    case Accounts.get_facebook_page_credential(facebook_page) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Facebook page not found.")}
 
-    case Accounts.update_facebook_page_credential(facebook_page_credential, %{selected: true}) do
-      {:ok, _} ->
-        socket =
-          socket
-          |> put_flash(:info, "Facebook page selected successfully")
-          |> push_navigate(to: ~p"/dashboard/settings")
+      facebook_page_credential ->
+        case Accounts.update_facebook_page_credential(facebook_page_credential, %{selected: true}) do
+          {:ok, _} ->
+            socket =
+              socket
+              |> put_flash(:info, "Facebook page selected successfully")
+              |> push_navigate(to: ~p"/dashboard/settings")
 
-        {:noreply, socket}
+            {:noreply, socket}
 
-      {:error, changeset} ->
-        {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
+          {:error, changeset} ->
+            {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
+        end
     end
   end
 

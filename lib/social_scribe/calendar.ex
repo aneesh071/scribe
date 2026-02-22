@@ -53,6 +53,12 @@ defmodule SocialScribe.Calendar do
   def get_calendar_event!(id), do: Repo.get!(CalendarEvent, id)
 
   @doc """
+  Gets a single calendar_event. Returns `nil` if not found.
+  """
+  @spec get_calendar_event(integer()) :: CalendarEvent.t() | nil
+  def get_calendar_event(id), do: Repo.get(CalendarEvent, id)
+
+  @doc """
   Creates a calendar_event.
 
   ## Examples

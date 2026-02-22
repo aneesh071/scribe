@@ -24,13 +24,20 @@ defmodule SocialScribe.Bots do
     Repo.all(RecallBot)
   end
 
+  @staleness_hours 24
+
   @doc """
-  Lists all bots whose status is not yet "done" or "error".
-  These are the bots that the poller should check.
+  Lists all bots whose status is not yet "done" or "error" and were created
+  within the last #{@staleness_hours} hours. Prevents indefinite polling of stuck bots.
   """
   @spec list_pending_bots() :: [RecallBot.t()]
   def list_pending_bots do
-    from(b in RecallBot, where: b.status not in ["done", "error", "polling_error"])
+    cutoff = DateTime.add(DateTime.utc_now(), -@staleness_hours, :hour)
+
+    from(b in RecallBot,
+      where: b.status not in ["done", "error", "polling_error"],
+      where: b.inserted_at >= ^cutoff
+    )
     |> Repo.all()
   end
 

@@ -18,6 +18,8 @@ defmodule SocialScribeWeb.MeetingLive.Show do
   alias SocialScribe.SalesforceApiBehaviour, as: SalesforceApi
   alias SocialScribe.SalesforceSuggestions
 
+  require Logger
+
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
@@ -74,12 +76,15 @@ defmodule SocialScribeWeb.MeetingLive.Show do
   end
 
   defp maybe_load_automation_result(socket, %{"automation_result_id" => automation_result_id}) do
-    automation_result = Automations.get_automation_result!(automation_result_id)
-    automation = Automations.get_automation!(automation_result.automation_id)
-
-    socket
-    |> assign(:automation_result, automation_result)
-    |> assign(:automation, automation)
+    with %{} = automation_result <- Automations.get_automation_result(automation_result_id),
+         %{} = automation <- Automations.get_automation(automation_result.automation_id) do
+      socket
+      |> assign(:automation_result, automation_result)
+      |> assign(:automation, automation)
+    else
+      nil ->
+        put_flash(socket, :error, "Automation result not found.")
+    end
   end
 
   defp maybe_load_automation_result(socket, _params), do: socket
@@ -114,6 +119,17 @@ defmodule SocialScribeWeb.MeetingLive.Show do
     end
 
     {:noreply, socket}
+  rescue
+    e in DBConnection.ConnectionError ->
+      Logger.error("DB connection lost during HubSpot search: #{Exception.message(e)}")
+
+      send_update(SocialScribeWeb.MeetingLive.HubspotModalComponent,
+        id: "hubspot-modal",
+        error: "Service temporarily unavailable. Please try again.",
+        searching: false
+      )
+
+      {:noreply, socket}
   end
 
   @impl true
@@ -183,6 +199,17 @@ defmodule SocialScribeWeb.MeetingLive.Show do
     end
 
     {:noreply, socket}
+  rescue
+    e in DBConnection.ConnectionError ->
+      Logger.error("DB connection lost during Salesforce search: #{Exception.message(e)}")
+
+      send_update(SocialScribeWeb.MeetingLive.SalesforceModalComponent,
+        id: "salesforce-modal",
+        error: "Service temporarily unavailable. Please try again.",
+        searching: false
+      )
+
+      {:noreply, socket}
   end
 
   @impl true

@@ -9,7 +9,7 @@ import Config
 
 config :social_scribe, Oban,
   engine: Oban.Engines.Basic,
-  notifier: Oban.Notifiers.Postgres,
+  notifier: Oban.Notifiers.PG,
   repo: SocialScribe.Repo,
   queues: [
     default: 10,

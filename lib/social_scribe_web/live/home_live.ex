@@ -27,19 +27,26 @@ defmodule SocialScribeWeb.HomeLive do
 
   @impl true
   def handle_event("toggle_record", %{"id" => event_id}, socket) do
-    event = Calendar.get_calendar_event!(event_id)
+    case Calendar.get_calendar_event(event_id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Calendar event not found.")}
 
-    {:ok, event} =
-      Calendar.update_calendar_event(event, %{record_meeting: not event.record_meeting})
+      event ->
+        case Calendar.update_calendar_event(event, %{record_meeting: not event.record_meeting}) do
+          {:ok, updated_event} ->
+            send(self(), {:schedule_bot, updated_event})
 
-    send(self(), {:schedule_bot, event})
+            updated_events =
+              Enum.map(socket.assigns.events, fn e ->
+                if e.id == updated_event.id, do: updated_event, else: e
+              end)
 
-    updated_events =
-      Enum.map(socket.assigns.events, fn e ->
-        if e.id == event.id, do: event, else: e
-      end)
+            {:noreply, assign(socket, :events, updated_events)}
 
-    {:noreply, assign(socket, :events, updated_events)}
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, "Failed to update recording preference.")}
+        end
+    end
   end
 
   @impl true
@@ -75,15 +82,33 @@ defmodule SocialScribeWeb.HomeLive do
 
   @impl true
   def handle_info(:sync_calendars, socket) do
-    CalendarSyncronizer.sync_events_for_user(socket.assigns.current_user)
+    user = socket.assigns.current_user
 
-    events = Calendar.list_upcoming_events(socket.assigns.current_user)
-
-    socket =
-      socket
-      |> assign(:events, events)
-      |> assign(:loading, false)
+    Task.Supervisor.async_nolink(SocialScribe.TaskSupervisor, fn ->
+      CalendarSyncronizer.sync_events_for_user(user)
+    end)
 
     {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({ref, {:ok, :sync_complete}}, socket) when is_reference(ref) do
+    Process.demonitor(ref, [:flush])
+    events = Calendar.list_upcoming_events(socket.assigns.current_user)
+
+    {:noreply, socket |> assign(:events, events) |> assign(:loading, false)}
+  end
+
+  @impl true
+  def handle_info({ref, _result}, socket) when is_reference(ref) do
+    Process.demonitor(ref, [:flush])
+    Logger.warning("Calendar sync returned unexpected result")
+    {:noreply, assign(socket, :loading, false)}
+  end
+
+  @impl true
+  def handle_info({:DOWN, _ref, :process, _pid, _reason}, socket) do
+    Logger.warning("Calendar sync task failed")
+    {:noreply, assign(socket, :loading, false)}
   end
 end

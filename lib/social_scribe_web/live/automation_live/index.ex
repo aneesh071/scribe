@@ -19,9 +19,17 @@ defmodule SocialScribeWeb.AutomationLive.Index do
   end
 
   defp apply_action(socket, :edit, %{"id" => id}) do
-    socket
-    |> assign(:page_title, "Edit Automation")
-    |> assign(:automation, Automations.get_automation!(id))
+    case Automations.get_automation(id) do
+      nil ->
+        socket
+        |> put_flash(:error, "Automation not found.")
+        |> push_navigate(to: ~p"/dashboard/automations")
+
+      automation ->
+        socket
+        |> assign(:page_title, "Edit Automation")
+        |> assign(:automation, automation)
+    end
   end
 
   defp apply_action(socket, :new, _params) do
@@ -50,37 +58,50 @@ defmodule SocialScribeWeb.AutomationLive.Index do
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
-    automation = Automations.get_automation!(id)
-    {:ok, _} = Automations.delete_automation(automation)
+    case Automations.get_automation(id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Automation not found.")}
 
-    {:noreply,
-     assign(socket, :automations, Enum.filter(socket.assigns.automations, fn a -> a.id != id end))}
+      automation ->
+        case Automations.delete_automation(automation) do
+          {:ok, _} ->
+            {:noreply,
+             assign(
+               socket,
+               :automations,
+               Enum.reject(socket.assigns.automations, fn a -> a.id == automation.id end)
+             )}
+
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, "Failed to delete automation.")}
+        end
+    end
   end
 
   @impl true
   def handle_event("toggle_automation", %{"id" => id}, socket) do
-    automation = Automations.get_automation!(id)
+    case Automations.get_automation(id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Automation not found.")}
 
-    case Automations.update_automation(automation, %{is_active: !automation.is_active}) do
-      {:ok, updated_automation} ->
-        socket =
-          socket
-          |> assign(
-            :automations,
-            Enum.map(socket.assigns.automations, fn a ->
-              if a.id == id do
-                updated_automation
-              else
-                a
-              end
-            end)
-          )
+      automation ->
+        case Automations.update_automation(automation, %{is_active: !automation.is_active}) do
+          {:ok, updated_automation} ->
+            socket =
+              socket
+              |> assign(
+                :automations,
+                Enum.map(socket.assigns.automations, fn a ->
+                  if a.id == updated_automation.id, do: updated_automation, else: a
+                end)
+              )
 
-        {:noreply, socket}
+            {:noreply, socket}
 
-      {:error, _changeset} ->
-        {:noreply,
-         put_flash(socket, :error, "You can only have one active automation per platform")}
+          {:error, _changeset} ->
+            {:noreply,
+             put_flash(socket, :error, "You can only have one active automation per platform")}
+        end
     end
   end
 end

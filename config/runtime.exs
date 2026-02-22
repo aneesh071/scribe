@@ -59,6 +59,17 @@ if config_env() == :prod do
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
+  # TCP keepalive prevents Fly.io's proxy (60s) and HAProxy (30m) from
+  # dropping idle database connections. OTP 27+ supports keepidle/keepintvl/keepcnt
+  # natively, but these are Linux-only. On macOS (local dev), use basic :keepalive.
+  keepalive_opts =
+    if System.get_env("FLY_APP_NAME") do
+      # Linux on Fly.io -- aggressive keepalive to survive proxy idle timeouts
+      [keepalive: true, keepidle: 15, keepintvl: 5, keepcnt: 3]
+    else
+      [keepalive: true]
+    end
+
   # Parse DATABASE_URL for Cloud SQL Unix socket connections
   # Format: ecto://user:pass@localhost/db?socket=/cloudsql/project:region:instance
   uri = URI.parse(database_url)
@@ -88,7 +99,8 @@ if config_env() == :prod do
       [
         url: database_url,
         pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-        socket_options: maybe_ipv6
+        socket_options: maybe_ipv6 ++ keepalive_opts,
+        disconnect_on_error_codes: [:"57P01"]
       ]
     end
 

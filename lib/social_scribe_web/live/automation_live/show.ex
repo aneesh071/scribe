@@ -14,23 +14,36 @@ defmodule SocialScribeWeb.AutomationLive.Show do
 
   @impl true
   def handle_params(%{"id" => id}, _, socket) do
-    {:noreply,
-     socket
-     |> assign(:page_title, page_title(socket.assigns.live_action))
-     |> assign(:automation, Automations.get_automation!(id))}
+    case Automations.get_automation(id) do
+      nil ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Automation not found.")
+         |> push_navigate(to: ~p"/dashboard/automations")}
+
+      automation ->
+        {:noreply,
+         socket
+         |> assign(:page_title, page_title(socket.assigns.live_action))
+         |> assign(:automation, automation)}
+    end
   end
 
   @impl true
   def handle_event("toggle_automation", %{"id" => id}, socket) do
-    automation = Automations.get_automation!(id)
+    case Automations.get_automation(id) do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Automation not found.")}
 
-    case Automations.update_automation(automation, %{is_active: !automation.is_active}) do
-      {:ok, updated_automation} ->
-        {:noreply, assign(socket, :automation, updated_automation)}
+      automation ->
+        case Automations.update_automation(automation, %{is_active: !automation.is_active}) do
+          {:ok, updated_automation} ->
+            {:noreply, assign(socket, :automation, updated_automation)}
 
-      {:error, _changeset} ->
-        {:noreply,
-         put_flash(socket, :error, "You can only have one active automation per platform")}
+          {:error, _changeset} ->
+            {:noreply,
+             put_flash(socket, :error, "You can only have one active automation per platform")}
+        end
     end
   end
 

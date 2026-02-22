@@ -23,9 +23,10 @@ defmodule SocialScribe.Workers.BotStatusPoller do
       Logger.info("Polling #{Enum.count(bots_to_poll)} pending Recall.ai bots...")
     end
 
-    Enum.each(bots_to_poll, &poll_and_process_bot/1)
+    results = Enum.map(bots_to_poll, &poll_and_process_bot/1)
+    failures = Enum.filter(results, &match?(:error, &1))
 
-    :ok
+    if Enum.empty?(failures), do: :ok, else: {:error, "#{length(failures)} bot(s) failed polling"}
   end
 
   defp poll_and_process_bot(bot_record) do
@@ -46,12 +47,16 @@ defmodule SocialScribe.Workers.BotStatusPoller do
               if new_status != bot_record.status do
                 Logger.info("Bot #{bot_record.recall_bot_id} status updated to: #{new_status}")
               end
+
+              :ok
             end
 
           {:error, reason} ->
             Logger.error(
               "Failed to update bot #{bot_record.recall_bot_id} status to #{new_status}: #{inspect(reason)}"
             )
+
+            :error
         end
 
       {:error, reason} ->
@@ -61,12 +66,14 @@ defmodule SocialScribe.Workers.BotStatusPoller do
 
         case Bots.update_recall_bot(bot_record, %{status: "polling_error"}) do
           {:ok, _} ->
-            :ok
+            :error
 
           {:error, update_reason} ->
             Logger.error(
               "Failed to mark bot #{bot_record.recall_bot_id} as polling_error: #{inspect(update_reason)}"
             )
+
+            :error
         end
     end
   end
@@ -98,23 +105,30 @@ defmodule SocialScribe.Workers.BotStatusPoller do
                |> Oban.insert() do
             {:ok, _job} ->
               Logger.info("Enqueued AI content generation for meeting #{meeting.id}")
+              :ok
 
             {:error, reason} ->
               Logger.error(
                 "Failed to enqueue AI content generation for meeting #{meeting.id}: #{inspect(reason)}"
               )
+
+              :error
           end
 
         {:error, reason} ->
           Logger.error(
             "Failed to create meeting record from bot #{bot_record.recall_bot_id}: #{inspect(reason)}"
           )
+
+          :error
       end
     else
       {:error, reason} ->
         Logger.error(
           "Failed to fetch data for bot #{bot_record.recall_bot_id} after completion: #{inspect(reason)}"
         )
+
+        :error
     end
   end
 
