@@ -226,7 +226,7 @@ defmodule SocialScribe.HubspotApi do
         end
 
       {:error, refresh_error} ->
-        Logger.error("Failed to refresh HubSpot token: #{inspect(refresh_error)}")
+        Logger.error("Failed to refresh HubSpot token")
         {:error, {:token_refresh_failed, refresh_error}}
     end
   end

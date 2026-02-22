@@ -37,9 +37,9 @@ defmodule SocialScribe.Workers.HubspotTokenRefresher do
         {:ok, _updated} ->
           Logger.info("Proactively refreshed HubSpot token for credential #{credential.id}")
 
-        {:error, reason} ->
+        {:error, _reason} ->
           Logger.error(
-            "Failed to proactively refresh HubSpot token for credential #{credential.id}: #{inspect(reason)}"
+            "Failed to proactively refresh HubSpot token for credential #{credential.id}"
           )
       end
     end)

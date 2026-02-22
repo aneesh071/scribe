@@ -40,10 +40,8 @@ defmodule SocialScribe.Workers.SalesforceTokenRefresher do
         {:ok, _} ->
           Logger.info("Refreshed Salesforce token for credential #{credential.id}")
 
-        {:error, reason} ->
-          Logger.error(
-            "Failed to refresh Salesforce token for credential #{credential.id}: #{inspect(reason)}"
-          )
+        {:error, _reason} ->
+          Logger.error("Failed to refresh Salesforce token for credential #{credential.id}")
       end
     end)
 

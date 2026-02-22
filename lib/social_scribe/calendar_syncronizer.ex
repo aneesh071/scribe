@@ -57,9 +57,7 @@ defmodule SocialScribe.CalendarSyncronizer do
               {:ok, updated_credential.token}
 
             {:error, reason} ->
-              Logger.error(
-                "Failed to persist refreshed token for credential #{credential.id}: #{inspect(reason)}"
-              )
+              Logger.error("Failed to persist refreshed token for credential #{credential.id}")
 
               {:error, {:token_persist_failed, reason}}
           end

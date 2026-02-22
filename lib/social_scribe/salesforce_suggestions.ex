@@ -45,7 +45,8 @@ defmodule SocialScribe.SalesforceSuggestions do
   @doc """
   Returns the set of allowed Salesforce field names (derived from @field_labels).
   """
-  @spec allowed_fields() :: MapSet.t()
+  @spec allowed_fields() :: MapSet.t(String.t())
+  @dialyzer {:nowarn_function, allowed_fields: 0}
   def allowed_fields, do: @allowed_fields
 
   @doc """

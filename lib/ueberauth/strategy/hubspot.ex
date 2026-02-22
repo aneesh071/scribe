@@ -15,6 +15,7 @@ defmodule Ueberauth.Strategy.Hubspot do
   @doc """
   Handles initial request for HubSpot authentication.
   """
+  @impl true
   def handle_request!(conn) do
     scopes = conn.params["scope"] || option(conn, :default_scope)
 
@@ -30,6 +31,7 @@ defmodule Ueberauth.Strategy.Hubspot do
   @doc """
   Handles the callback from HubSpot.
   """
+  @impl true
   def handle_callback!(%Plug.Conn{params: %{"code" => code}} = conn) do
     opts = [redirect_uri: callback_url(conn)]
 
@@ -42,6 +44,7 @@ defmodule Ueberauth.Strategy.Hubspot do
     end
   end
 
+  @impl true
   def handle_callback!(conn) do
     set_errors!(conn, [error("missing_code", "No code received")])
   end
@@ -49,6 +52,7 @@ defmodule Ueberauth.Strategy.Hubspot do
   @doc """
   Cleans up the private area of the connection used for passing the raw HubSpot response around during the callback.
   """
+  @impl true
   def handle_cleanup!(conn) do
     conn
     |> put_private(:hubspot_token, nil)
@@ -58,6 +62,7 @@ defmodule Ueberauth.Strategy.Hubspot do
   @doc """
   Fetches the uid field from the response.
   """
+  @impl true
   def uid(conn) do
     uid_field =
       conn
@@ -70,6 +75,7 @@ defmodule Ueberauth.Strategy.Hubspot do
   @doc """
   Includes the credentials from the HubSpot response.
   """
+  @impl true
   def credentials(conn) do
     token = conn.private.hubspot_token
 
@@ -86,6 +92,7 @@ defmodule Ueberauth.Strategy.Hubspot do
   @doc """
   Fetches the fields to populate the info section of the `Ueberauth.Auth` struct.
   """
+  @impl true
   def info(conn) do
     user = conn.private.hubspot_user
 
@@ -98,6 +105,7 @@ defmodule Ueberauth.Strategy.Hubspot do
   @doc """
   Stores the raw information obtained from the HubSpot callback.
   """
+  @impl true
   def extra(conn) do
     %Extra{
       raw_info: %{
