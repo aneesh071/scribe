@@ -22,6 +22,7 @@ defmodule SocialScribe.Meetings do
       [%Meeting{}, ...]
 
   """
+  @spec list_meetings() :: [Meeting.t()]
   def list_meetings do
     Repo.all(Meeting)
   end
@@ -40,6 +41,7 @@ defmodule SocialScribe.Meetings do
       ** (Ecto.NoResultsError)
 
   """
+  @spec get_meeting!(integer()) :: Meeting.t()
   def get_meeting!(id), do: Repo.get!(Meeting, id)
 
   @doc """
@@ -51,6 +53,7 @@ defmodule SocialScribe.Meetings do
       %Meeting{}
 
   """
+  @spec get_meeting_by_recall_bot_id(integer()) :: Meeting.t() | nil
   def get_meeting_by_recall_bot_id(recall_bot_id) do
     Repo.get_by(Meeting, recall_bot_id: recall_bot_id)
   end
@@ -67,6 +70,7 @@ defmodule SocialScribe.Meetings do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec create_meeting(map()) :: {:ok, Meeting.t()} | {:error, Ecto.Changeset.t()}
   def create_meeting(attrs \\ %{}) do
     %Meeting{}
     |> Meeting.changeset(attrs)
@@ -85,6 +89,7 @@ defmodule SocialScribe.Meetings do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec update_meeting(Meeting.t(), map()) :: {:ok, Meeting.t()} | {:error, Ecto.Changeset.t()}
   def update_meeting(%Meeting{} = meeting, attrs) do
     meeting
     |> Meeting.changeset(attrs)
@@ -103,6 +108,7 @@ defmodule SocialScribe.Meetings do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec delete_meeting(Meeting.t()) :: {:ok, Meeting.t()} | {:error, Ecto.Changeset.t()}
   def delete_meeting(%Meeting{} = meeting) do
     Repo.delete(meeting)
   end
@@ -116,6 +122,7 @@ defmodule SocialScribe.Meetings do
       %Ecto.Changeset{data: %Meeting{}}
 
   """
+  @spec change_meeting(Meeting.t(), map()) :: Ecto.Changeset.t()
   def change_meeting(%Meeting{} = meeting, attrs \\ %{}) do
     Meeting.changeset(meeting, attrs)
   end
@@ -123,6 +130,7 @@ defmodule SocialScribe.Meetings do
   @doc """
   Lists all processed meetings for a user.
   """
+  @spec list_user_meetings(SocialScribe.Accounts.User.t()) :: [Meeting.t()]
   def list_user_meetings(user) do
     from(m in Meeting,
       join: ce in assoc(m, :calendar_event),
@@ -141,6 +149,7 @@ defmodule SocialScribe.Meetings do
       iex> get_meeting_with_details(123)
       %Meeting{}
   """
+  @spec get_meeting_with_details(integer()) :: Meeting.t() | nil
   def get_meeting_with_details(meeting_id) do
     Meeting
     |> Repo.get(meeting_id)
@@ -156,6 +165,7 @@ defmodule SocialScribe.Meetings do
       [%MeetingTranscript{}, ...]
 
   """
+  @spec list_meeting_transcripts() :: [MeetingTranscript.t()]
   def list_meeting_transcripts do
     Repo.all(MeetingTranscript)
   end
@@ -174,6 +184,7 @@ defmodule SocialScribe.Meetings do
       ** (Ecto.NoResultsError)
 
   """
+  @spec get_meeting_transcript!(integer()) :: MeetingTranscript.t()
   def get_meeting_transcript!(id), do: Repo.get!(MeetingTranscript, id)
 
   @doc """
@@ -188,6 +199,8 @@ defmodule SocialScribe.Meetings do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec create_meeting_transcript(map()) ::
+          {:ok, MeetingTranscript.t()} | {:error, Ecto.Changeset.t()}
   def create_meeting_transcript(attrs \\ %{}) do
     %MeetingTranscript{}
     |> MeetingTranscript.changeset(attrs)
@@ -206,6 +219,8 @@ defmodule SocialScribe.Meetings do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec update_meeting_transcript(MeetingTranscript.t(), map()) ::
+          {:ok, MeetingTranscript.t()} | {:error, Ecto.Changeset.t()}
   def update_meeting_transcript(%MeetingTranscript{} = meeting_transcript, attrs) do
     meeting_transcript
     |> MeetingTranscript.changeset(attrs)
@@ -224,6 +239,8 @@ defmodule SocialScribe.Meetings do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec delete_meeting_transcript(MeetingTranscript.t()) ::
+          {:ok, MeetingTranscript.t()} | {:error, Ecto.Changeset.t()}
   def delete_meeting_transcript(%MeetingTranscript{} = meeting_transcript) do
     Repo.delete(meeting_transcript)
   end
@@ -237,6 +254,7 @@ defmodule SocialScribe.Meetings do
       %Ecto.Changeset{data: %MeetingTranscript{}}
 
   """
+  @spec change_meeting_transcript(MeetingTranscript.t(), map()) :: Ecto.Changeset.t()
   def change_meeting_transcript(%MeetingTranscript{} = meeting_transcript, attrs \\ %{}) do
     MeetingTranscript.changeset(meeting_transcript, attrs)
   end
@@ -250,6 +268,7 @@ defmodule SocialScribe.Meetings do
       [%MeetingParticipant{}, ...]
 
   """
+  @spec list_meeting_participants() :: [MeetingParticipant.t()]
   def list_meeting_participants do
     Repo.all(MeetingParticipant)
   end
@@ -268,6 +287,7 @@ defmodule SocialScribe.Meetings do
       ** (Ecto.NoResultsError)
 
   """
+  @spec get_meeting_participant!(integer()) :: MeetingParticipant.t()
   def get_meeting_participant!(id), do: Repo.get!(MeetingParticipant, id)
 
   @doc """
@@ -282,6 +302,8 @@ defmodule SocialScribe.Meetings do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec create_meeting_participant(map()) ::
+          {:ok, MeetingParticipant.t()} | {:error, Ecto.Changeset.t()}
   def create_meeting_participant(attrs \\ %{}) do
     %MeetingParticipant{}
     |> MeetingParticipant.changeset(attrs)
@@ -300,6 +322,8 @@ defmodule SocialScribe.Meetings do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec update_meeting_participant(MeetingParticipant.t(), map()) ::
+          {:ok, MeetingParticipant.t()} | {:error, Ecto.Changeset.t()}
   def update_meeting_participant(%MeetingParticipant{} = meeting_participant, attrs) do
     meeting_participant
     |> MeetingParticipant.changeset(attrs)
@@ -318,6 +342,8 @@ defmodule SocialScribe.Meetings do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec delete_meeting_participant(MeetingParticipant.t()) ::
+          {:ok, MeetingParticipant.t()} | {:error, Ecto.Changeset.t()}
   def delete_meeting_participant(%MeetingParticipant{} = meeting_participant) do
     Repo.delete(meeting_participant)
   end
@@ -331,6 +357,7 @@ defmodule SocialScribe.Meetings do
       %Ecto.Changeset{data: %MeetingParticipant{}}
 
   """
+  @spec change_meeting_participant(MeetingParticipant.t(), map()) :: Ecto.Changeset.t()
   def change_meeting_participant(%MeetingParticipant{} = meeting_participant, attrs \\ %{}) do
     MeetingParticipant.changeset(meeting_participant, attrs)
   end
@@ -339,6 +366,8 @@ defmodule SocialScribe.Meetings do
   Creates a complete meeting record from Recall.ai bot info, transcript data, and participants.
   This should be called when a bot's status is "done".
   """
+  @spec create_meeting_from_recall_data(RecallBot.t(), map(), list() | binary(), list()) ::
+          {:ok, Meeting.t()} | {:error, any()}
   def create_meeting_from_recall_data(
         %RecallBot{} = recall_bot,
         bot_api_info,
@@ -456,6 +485,7 @@ defmodule SocialScribe.Meetings do
   @doc """
   Generates a prompt for a meeting.
   """
+  @spec generate_prompt_for_meeting(Meeting.t()) :: {:ok, String.t()} | {:error, atom()}
   def generate_prompt_for_meeting(%Meeting{} = meeting) do
     with {:ok, participants_string} <- participants_to_string(meeting.meeting_participants),
          {:ok, transcript_string} <- transcript_to_string(meeting.meeting_transcript) do

@@ -22,7 +22,8 @@ defmodule SocialScribe.CalendarSyncronizer do
     SocialScribe.TaskSupervisor
     |> Task.Supervisor.async_stream_nolink(credentials, &fetch_and_sync_for_credential/1,
       ordered: false,
-      on_timeout: :kill_task
+      on_timeout: :kill_task,
+      timeout: 30_000
     )
     |> Stream.run()
 

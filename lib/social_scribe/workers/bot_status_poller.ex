@@ -32,10 +32,10 @@ defmodule SocialScribe.Workers.BotStatusPoller do
     case RecallApi.get_bot(bot_record.recall_bot_id) do
       {:ok, %Tesla.Env{body: bot_api_info}} ->
         new_status =
-          bot_api_info
-          |> Map.get(:status_changes)
-          |> List.last()
-          |> Map.get(:code)
+          case bot_api_info |> Map.get(:status_changes) do
+            [_ | _] = changes -> changes |> List.last() |> Map.get(:code)
+            _ -> "unknown"
+          end
 
         case Bots.update_recall_bot(bot_record, %{status: new_status}) do
           {:ok, updated_bot_record} ->

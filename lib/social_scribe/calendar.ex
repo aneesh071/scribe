@@ -12,6 +12,7 @@ defmodule SocialScribe.Calendar do
   @doc """
   Lists all upcoming events for a given user from the local database.
   """
+  @spec list_upcoming_events(SocialScribe.Accounts.User.t()) :: [CalendarEvent.t()]
   def list_upcoming_events(user) do
     from(e in CalendarEvent,
       where: e.user_id == ^user.id and e.start_time > ^DateTime.utc_now(),
@@ -29,6 +30,7 @@ defmodule SocialScribe.Calendar do
       [%CalendarEvent{}, ...]
 
   """
+  @spec list_calendar_events() :: [CalendarEvent.t()]
   def list_calendar_events do
     Repo.all(CalendarEvent)
   end
@@ -47,6 +49,7 @@ defmodule SocialScribe.Calendar do
       ** (Ecto.NoResultsError)
 
   """
+  @spec get_calendar_event!(integer()) :: CalendarEvent.t()
   def get_calendar_event!(id), do: Repo.get!(CalendarEvent, id)
 
   @doc """
@@ -61,6 +64,7 @@ defmodule SocialScribe.Calendar do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec create_calendar_event(map()) :: {:ok, CalendarEvent.t()} | {:error, Ecto.Changeset.t()}
   def create_calendar_event(attrs \\ %{}) do
     %CalendarEvent{}
     |> CalendarEvent.changeset(attrs)
@@ -79,6 +83,8 @@ defmodule SocialScribe.Calendar do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec update_calendar_event(CalendarEvent.t(), map()) ::
+          {:ok, CalendarEvent.t()} | {:error, Ecto.Changeset.t()}
   def update_calendar_event(%CalendarEvent{} = calendar_event, attrs) do
     calendar_event
     |> CalendarEvent.changeset(attrs)
@@ -97,6 +103,8 @@ defmodule SocialScribe.Calendar do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec delete_calendar_event(CalendarEvent.t()) ::
+          {:ok, CalendarEvent.t()} | {:error, Ecto.Changeset.t()}
   def delete_calendar_event(%CalendarEvent{} = calendar_event) do
     Repo.delete(calendar_event)
   end
@@ -110,6 +118,7 @@ defmodule SocialScribe.Calendar do
       %Ecto.Changeset{data: %CalendarEvent{}}
 
   """
+  @spec change_calendar_event(CalendarEvent.t(), map()) :: Ecto.Changeset.t()
   def change_calendar_event(%CalendarEvent{} = calendar_event, attrs \\ %{}) do
     CalendarEvent.changeset(calendar_event, attrs)
   end
@@ -123,6 +132,8 @@ defmodule SocialScribe.Calendar do
       {:ok, %CalendarEvent{}}
 
   """
+  @spec create_or_update_calendar_event(map()) ::
+          {:ok, CalendarEvent.t()} | {:error, Ecto.Changeset.t()}
   def create_or_update_calendar_event(attrs \\ %{}) do
     on_conflict =
       attrs

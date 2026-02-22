@@ -24,6 +24,7 @@ defmodule SocialScribe.Accounts do
       nil
 
   """
+  @spec get_user_by_email(String.t()) :: User.t() | nil
   def get_user_by_email(email) when is_binary(email) do
     Repo.get_by(User, email: email)
   end
@@ -42,6 +43,7 @@ defmodule SocialScribe.Accounts do
       ** (Ecto.NoResultsError)
 
   """
+  @spec get_user!(integer()) :: User.t()
   def get_user!(id), do: Repo.get!(User, id)
 
   ## User registration
@@ -58,6 +60,7 @@ defmodule SocialScribe.Accounts do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec register_user(map()) :: {:ok, User.t()} | {:error, Ecto.Changeset.t()}
   def register_user(attrs) do
     %User{}
     |> User.registration_changeset(attrs)
@@ -73,6 +76,7 @@ defmodule SocialScribe.Accounts do
       %Ecto.Changeset{data: %User{}}
 
   """
+  @spec change_user_registration(User.t(), map()) :: Ecto.Changeset.t()
   def change_user_registration(%User{} = user, attrs \\ %{}) do
     User.registration_changeset(user, attrs, hash_password: false, validate_email: false)
   end
@@ -82,6 +86,7 @@ defmodule SocialScribe.Accounts do
   @doc """
   Generates a session token.
   """
+  @spec generate_user_session_token(User.t()) :: binary()
   def generate_user_session_token(user) do
     {token, user_token} = UserToken.build_session_token(user)
     Repo.insert!(user_token)
@@ -91,6 +96,7 @@ defmodule SocialScribe.Accounts do
   @doc """
   Gets the user with the given signed token.
   """
+  @spec get_user_by_session_token(binary()) :: User.t() | nil
   def get_user_by_session_token(token) do
     {:ok, query} = UserToken.verify_session_token_query(token)
     Repo.one(query)
@@ -99,6 +105,7 @@ defmodule SocialScribe.Accounts do
   @doc """
   Deletes the signed token with the given context.
   """
+  @spec delete_user_session_token(binary()) :: :ok
   def delete_user_session_token(token) do
     Repo.delete_all(UserToken.by_token_and_context_query(token, "session"))
     :ok
@@ -115,10 +122,12 @@ defmodule SocialScribe.Accounts do
       [%UserCredential{}, ...]
 
   """
+  @spec list_user_credentials() :: [UserCredential.t()]
   def list_user_credentials do
     Repo.all(UserCredential)
   end
 
+  @spec list_user_credentials(User.t(), keyword()) :: [UserCredential.t()]
   def list_user_credentials(user, where \\ []) do
     query =
       from c in UserCredential,
@@ -157,8 +166,10 @@ defmodule SocialScribe.Accounts do
       ** (Ecto.NoResultsError)
 
   """
+  @spec get_user_credential!(integer()) :: UserCredential.t()
   def get_user_credential!(id), do: Repo.get!(UserCredential, id)
 
+  @spec get_user_linkedin_credential(User.t()) :: UserCredential.t() | nil
   def get_user_linkedin_credential(user) do
     Repo.get_by(UserCredential, user_id: user.id, provider: "linkedin")
   end
@@ -174,10 +185,12 @@ defmodule SocialScribe.Accounts do
       iex> get_user_credential(user, "google", "google-uid-12345")
       nil
   """
+  @spec get_user_credential(User.t(), String.t(), String.t()) :: UserCredential.t() | nil
   def get_user_credential(user, provider, uid) do
     Repo.get_by(UserCredential, user_id: user.id, provider: provider, uid: uid)
   end
 
+  @spec get_user_credential(User.t(), String.t()) :: UserCredential.t() | nil
   def get_user_credential(user, provider) do
     Repo.get_by(UserCredential, user_id: user.id, provider: provider)
   end
@@ -194,6 +207,7 @@ defmodule SocialScribe.Accounts do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec create_user_credential(map()) :: {:ok, UserCredential.t()} | {:error, Ecto.Changeset.t()}
   def create_user_credential(attrs \\ %{}) do
     %UserCredential{}
     |> UserCredential.changeset(attrs)
@@ -212,6 +226,8 @@ defmodule SocialScribe.Accounts do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec update_user_credential(UserCredential.t(), map()) ::
+          {:ok, UserCredential.t()} | {:error, Ecto.Changeset.t()}
   def update_user_credential(%UserCredential{} = user_credential, attrs) do
     user_credential
     |> UserCredential.changeset(attrs)
@@ -230,6 +246,8 @@ defmodule SocialScribe.Accounts do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec delete_user_credential(UserCredential.t()) ::
+          {:ok, UserCredential.t()} | {:error, Ecto.Changeset.t()}
   def delete_user_credential(%UserCredential{} = user_credential) do
     Repo.delete(user_credential)
   end
@@ -243,12 +261,14 @@ defmodule SocialScribe.Accounts do
       %Ecto.Changeset{data: %UserCredential{}}
 
   """
+  @spec change_user_credential(UserCredential.t(), map()) :: Ecto.Changeset.t()
   def change_user_credential(%UserCredential{} = user_credential, attrs \\ %{}) do
     UserCredential.changeset(user_credential, attrs)
   end
 
   ## OAuth
 
+  @spec find_or_create_user_from_oauth(Auth.t()) :: {:ok, User.t()} | {:error, atom()}
   def find_or_create_user_from_oauth(%Auth{} = auth) do
     Repo.transaction(fn ->
       user = find_or_create_user(auth.provider, auth.uid, auth.info.email)
@@ -286,6 +306,8 @@ defmodule SocialScribe.Accounts do
   @doc """
   Finds or creates a user credential for a user.
   """
+  @spec find_or_create_user_credential(User.t(), Auth.t()) ::
+          {:ok, UserCredential.t()} | {:error, Ecto.Changeset.t()}
   def find_or_create_user_credential(user, %Auth{provider: provider} = auth)
       when provider in [:linkedin, :facebook] do
     case get_user_credential(
@@ -314,6 +336,8 @@ defmodule SocialScribe.Accounts do
   Finds or creates a HubSpot credential for a user.
   HubSpot uses a single credential per hub_id (account).
   """
+  @spec find_or_create_hubspot_credential(User.t(), map()) ::
+          {:ok, UserCredential.t()} | {:error, Ecto.Changeset.t()}
   def find_or_create_hubspot_credential(user, attrs) do
     case get_user_credential(user, "hubspot", attrs.uid) do
       nil ->
@@ -327,6 +351,7 @@ defmodule SocialScribe.Accounts do
   @doc """
   Gets the user's HubSpot credential if one exists.
   """
+  @spec get_user_hubspot_credential(integer()) :: UserCredential.t() | nil
   def get_user_hubspot_credential(user_id) do
     Repo.get_by(UserCredential, user_id: user_id, provider: "hubspot")
   end
@@ -334,6 +359,7 @@ defmodule SocialScribe.Accounts do
   @doc """
   Gets the Salesforce credential for a user.
   """
+  @spec get_user_salesforce_credential(integer()) :: UserCredential.t() | nil
   def get_user_salesforce_credential(user_id) do
     Repo.get_by(UserCredential, user_id: user_id, provider: "salesforce")
   end
@@ -342,6 +368,8 @@ defmodule SocialScribe.Accounts do
   Creates or updates a Salesforce credential for a user.
   Uses `salesforce_changeset/2` which requires `instance_url`.
   """
+  @spec find_or_create_salesforce_credential(User.t(), map()) ::
+          {:ok, UserCredential.t()} | {:error, Ecto.Changeset.t()}
   def find_or_create_salesforce_credential(user, attrs) do
     case get_user_credential(user, "salesforce", attrs.uid) do
       nil ->
@@ -428,6 +456,8 @@ defmodule SocialScribe.Accounts do
       iex> update_credential_tokens(user_credential, %{"access_token" => "new_token", "expires_in" => 3600})
       {:ok, %UserCredential{}}
   """
+  @spec update_credential_tokens(UserCredential.t(), %{String.t() => any()}) ::
+          {:ok, UserCredential.t()} | {:error, Ecto.Changeset.t()}
   def update_credential_tokens(%UserCredential{} = credential, %{
         "access_token" => token,
         "expires_in" => expires_in
@@ -451,6 +481,7 @@ defmodule SocialScribe.Accounts do
       [%FacebookPageCredential{}, ...]
 
   """
+  @spec list_facebook_page_credentials() :: [FacebookPageCredential.t()]
   def list_facebook_page_credentials do
     Repo.all(FacebookPageCredential)
   end
@@ -469,8 +500,10 @@ defmodule SocialScribe.Accounts do
       ** (Ecto.NoResultsError)
 
   """
+  @spec get_facebook_page_credential!(integer()) :: FacebookPageCredential.t()
   def get_facebook_page_credential!(id), do: Repo.get!(FacebookPageCredential, id)
 
+  @spec get_user_selected_facebook_page_credential(User.t()) :: FacebookPageCredential.t() | nil
   def get_user_selected_facebook_page_credential(user) do
     Repo.get_by(FacebookPageCredential, user_id: user.id, selected: true)
   end
@@ -487,6 +520,8 @@ defmodule SocialScribe.Accounts do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec create_facebook_page_credential(map()) ::
+          {:ok, FacebookPageCredential.t()} | {:error, Ecto.Changeset.t()}
   def create_facebook_page_credential(attrs \\ %{}) do
     %FacebookPageCredential{}
     |> FacebookPageCredential.changeset(attrs)
@@ -505,6 +540,8 @@ defmodule SocialScribe.Accounts do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec update_facebook_page_credential(FacebookPageCredential.t(), map()) ::
+          {:ok, FacebookPageCredential.t()} | {:error, Ecto.Changeset.t()}
   def update_facebook_page_credential(%FacebookPageCredential{} = facebook_page_credential, attrs) do
     facebook_page_credential
     |> FacebookPageCredential.changeset(attrs)
@@ -523,6 +560,8 @@ defmodule SocialScribe.Accounts do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec delete_facebook_page_credential(FacebookPageCredential.t()) ::
+          {:ok, FacebookPageCredential.t()} | {:error, Ecto.Changeset.t()}
   def delete_facebook_page_credential(%FacebookPageCredential{} = facebook_page_credential) do
     Repo.delete(facebook_page_credential)
   end
@@ -536,6 +575,7 @@ defmodule SocialScribe.Accounts do
       %Ecto.Changeset{data: %FacebookPageCredential{}}
 
   """
+  @spec change_facebook_page_credential(FacebookPageCredential.t(), map()) :: Ecto.Changeset.t()
   def change_facebook_page_credential(
         %FacebookPageCredential{} = facebook_page_credential,
         attrs \\ %{}
@@ -548,6 +588,8 @@ defmodule SocialScribe.Accounts do
   `user_credential` is the main Facebook UserCredential record.
   `page_data` is a map like %{id: "page_id", name: "Page Name", page_access_token: "token"}.
   """
+  @spec link_facebook_page(User.t(), UserCredential.t(), map()) ::
+          {:ok, FacebookPageCredential.t()} | {:error, Ecto.Changeset.t()}
   def link_facebook_page(user, user_credential, page_data) do
     attrs = %{
       user_id: user.id,
@@ -568,11 +610,13 @@ defmodule SocialScribe.Accounts do
   end
 
   @doc "Gets all linked Facebook Pages for a user."
+  @spec list_linked_facebook_pages(User.t()) :: [FacebookPageCredential.t()]
   def list_linked_facebook_pages(user) do
     Repo.all(from fpc in FacebookPageCredential, where: fpc.user_id == ^user.id)
   end
 
   @doc "Gets a specific linked Facebook Page for a user."
+  @spec get_linked_facebook_page(User.t(), String.t()) :: FacebookPageCredential.t() | nil
   def get_linked_facebook_page(user, facebook_page_id) do
     Repo.get_by(FacebookPageCredential, user_id: user.id, facebook_page_id: facebook_page_id)
   end

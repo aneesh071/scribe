@@ -14,6 +14,13 @@ defmodule SocialScribeWeb.AuthController do
 
   require Logger
 
+  # Allowed Salesforce instance URL domain patterns to prevent SSRF
+  @salesforce_domain_patterns [
+    ~r/\.salesforce\.com$/i,
+    ~r/\.force\.com$/i,
+    ~r/\.sfdc\.net$/i
+  ]
+
   @doc """
   Handles the initial request to the provider (e.g., Google).
   Ueberauth's plug will redirect the user to the provider's consent page.
@@ -141,39 +148,50 @@ defmodule SocialScribeWeb.AuthController do
 
     instance_url = get_in(auth, [Access.key(:credentials), Access.key(:other), :instance_url])
 
-    if is_nil(instance_url) || instance_url == "" do
-      Logger.error("Salesforce OAuth missing instance_url for user #{user.id}")
+    cond do
+      is_nil(instance_url) || instance_url == "" ->
+        Logger.error("Salesforce OAuth missing instance_url for user #{user.id}")
 
-      conn
-      |> put_flash(:error, "Could not connect Salesforce: missing instance URL.")
-      |> redirect(to: ~p"/dashboard/settings")
-    else
-      credential_attrs = %{
-        user_id: user.id,
-        provider: "salesforce",
-        uid: to_string(auth.uid),
-        token: auth.credentials.token,
-        refresh_token: auth.credentials.refresh_token,
-        instance_url: instance_url,
-        expires_at: DateTime.add(DateTime.utc_now(), 7200, :second),
-        email: auth.info.email
-      }
+        conn
+        |> put_flash(:error, "Could not connect Salesforce: missing instance URL.")
+        |> redirect(to: ~p"/dashboard/settings")
 
-      case Accounts.find_or_create_salesforce_credential(user, credential_attrs) do
-        {:ok, _credential} ->
-          Logger.info("Salesforce account connected for user #{user.id}")
+      not valid_salesforce_domain?(instance_url) ->
+        Logger.error(
+          "Salesforce OAuth rejected instance_url with invalid domain for user #{user.id}"
+        )
 
-          conn
-          |> put_flash(:info, "Salesforce account connected successfully!")
-          |> redirect(to: ~p"/dashboard/settings")
+        conn
+        |> put_flash(:error, "Could not connect Salesforce: invalid instance URL domain.")
+        |> redirect(to: ~p"/dashboard/settings")
 
-        {:error, _reason} ->
-          Logger.error("Failed to save Salesforce credential for user #{user.id}")
+      true ->
+        credential_attrs = %{
+          user_id: user.id,
+          provider: "salesforce",
+          uid: to_string(auth.uid),
+          token: auth.credentials.token,
+          refresh_token: auth.credentials.refresh_token,
+          instance_url: instance_url,
+          expires_at: DateTime.add(DateTime.utc_now(), 7200, :second),
+          email: auth.info.email
+        }
 
-          conn
-          |> put_flash(:error, "Could not connect Salesforce account.")
-          |> redirect(to: ~p"/dashboard/settings")
-      end
+        case Accounts.find_or_create_salesforce_credential(user, credential_attrs) do
+          {:ok, _credential} ->
+            Logger.info("Salesforce account connected for user #{user.id}")
+
+            conn
+            |> put_flash(:info, "Salesforce account connected successfully!")
+            |> redirect(to: ~p"/dashboard/settings")
+
+          {:error, _reason} ->
+            Logger.error("Failed to save Salesforce credential for user #{user.id}")
+
+            conn
+            |> put_flash(:error, "Could not connect Salesforce account.")
+            |> redirect(to: ~p"/dashboard/settings")
+        end
     end
   end
 
@@ -201,4 +219,16 @@ defmodule SocialScribeWeb.AuthController do
     |> put_flash(:error, "There was an error signing you in. Please try again.")
     |> redirect(to: ~p"/")
   end
+
+  defp valid_salesforce_domain?(url) when is_binary(url) do
+    case URI.parse(url) do
+      %URI{host: host} when is_binary(host) ->
+        Enum.any?(@salesforce_domain_patterns, &Regex.match?(&1, host))
+
+      _ ->
+        false
+    end
+  end
+
+  defp valid_salesforce_domain?(_), do: false
 end

@@ -12,6 +12,7 @@ defmodule SocialScribe.Automations do
   @doc """
   Returns the list of automations for a user.
   """
+  @spec list_active_user_automations(integer()) :: [Automation.t()]
   def list_active_user_automations(user_id) do
     from(a in Automation, where: a.user_id == ^user_id and a.is_active == true, order_by: a.name)
     |> Repo.all()
@@ -20,6 +21,7 @@ defmodule SocialScribe.Automations do
   @doc """
   Returns the list of automations for a user (all, not just active).
   """
+  @spec list_user_automations(integer()) :: [Automation.t()]
   def list_user_automations(user_id) do
     from(a in Automation, where: a.user_id == ^user_id, order_by: a.name)
     |> Repo.all()
@@ -39,11 +41,13 @@ defmodule SocialScribe.Automations do
       ** (Ecto.NoResultsError)
 
   """
+  @spec get_automation!(integer()) :: Automation.t()
   def get_automation!(id), do: Repo.get!(Automation, id)
 
   @doc """
   Checks if a user can create an automation for a given platform.
   """
+  @spec can_create_automation?(integer(), atom()) :: boolean()
   def can_create_automation?(user_id, platform) do
     query =
       from a in Automation,
@@ -64,6 +68,7 @@ defmodule SocialScribe.Automations do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec create_automation(map()) :: {:ok, Automation.t()} | {:error, Ecto.Changeset.t()}
   def create_automation(attrs \\ %{}) do
     attrs = sanitize_attrs(attrs)
     changeset = Automation.changeset(%Automation{}, attrs)
@@ -124,6 +129,8 @@ defmodule SocialScribe.Automations do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec update_automation(Automation.t(), map()) ::
+          {:ok, Automation.t()} | {:error, Ecto.Changeset.t()}
   def update_automation(%Automation{} = automation, attrs) do
     attrs = sanitize_attrs(attrs)
     changeset = Automation.changeset(automation, attrs)
@@ -160,6 +167,7 @@ defmodule SocialScribe.Automations do
     end
   end
 
+  @spec can_update_automation?(integer(), integer(), atom()) :: boolean()
   def can_update_automation?(id, user_id, platform) do
     query =
       from a in Automation,
@@ -182,6 +190,7 @@ defmodule SocialScribe.Automations do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec delete_automation(Automation.t()) :: {:ok, Automation.t()} | {:error, Ecto.Changeset.t()}
   def delete_automation(%Automation{} = automation) do
     Repo.delete(automation)
   end
@@ -195,6 +204,7 @@ defmodule SocialScribe.Automations do
       %Ecto.Changeset{data: %Automation{}}
 
   """
+  @spec change_automation(Automation.t(), map()) :: Ecto.Changeset.t()
   def change_automation(%Automation{} = automation, attrs \\ %{}) do
     Automation.changeset(automation, attrs)
   end
@@ -202,6 +212,7 @@ defmodule SocialScribe.Automations do
   @doc """
   Generates a prompt for an automation.
   """
+  @spec generate_prompt_for_automation(Automation.t()) :: String.t()
   def generate_prompt_for_automation(%Automation{} = automation) do
     """
     #{automation.description}
@@ -222,6 +233,7 @@ defmodule SocialScribe.Automations do
       [%AutomationResult{}, ...]
 
   """
+  @spec list_automation_results() :: [AutomationResult.t()]
   def list_automation_results do
     Repo.all(AutomationResult)
   end
@@ -229,6 +241,7 @@ defmodule SocialScribe.Automations do
   @doc """
   Returns the list of automation_results for a meeting.
   """
+  @spec list_automation_results_for_meeting(integer()) :: [AutomationResult.t()]
   def list_automation_results_for_meeting(meeting_id) do
     from(ar in AutomationResult, where: ar.meeting_id == ^meeting_id)
     |> Repo.all()
@@ -249,6 +262,7 @@ defmodule SocialScribe.Automations do
       ** (Ecto.NoResultsError)
 
   """
+  @spec get_automation_result!(integer()) :: AutomationResult.t()
   def get_automation_result!(id), do: Repo.get!(AutomationResult, id)
 
   @doc """
@@ -263,6 +277,8 @@ defmodule SocialScribe.Automations do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec create_automation_result(map()) ::
+          {:ok, AutomationResult.t()} | {:error, Ecto.Changeset.t()}
   def create_automation_result(attrs \\ %{}) do
     %AutomationResult{}
     |> AutomationResult.changeset(attrs)
@@ -281,6 +297,8 @@ defmodule SocialScribe.Automations do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec update_automation_result(AutomationResult.t(), map()) ::
+          {:ok, AutomationResult.t()} | {:error, Ecto.Changeset.t()}
   def update_automation_result(%AutomationResult{} = automation_result, attrs) do
     automation_result
     |> AutomationResult.changeset(attrs)
@@ -299,6 +317,8 @@ defmodule SocialScribe.Automations do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec delete_automation_result(AutomationResult.t()) ::
+          {:ok, AutomationResult.t()} | {:error, Ecto.Changeset.t()}
   def delete_automation_result(%AutomationResult{} = automation_result) do
     Repo.delete(automation_result)
   end
@@ -312,6 +332,7 @@ defmodule SocialScribe.Automations do
       %Ecto.Changeset{data: %AutomationResult{}}
 
   """
+  @spec change_automation_result(AutomationResult.t(), map()) :: Ecto.Changeset.t()
   def change_automation_result(%AutomationResult{} = automation_result, attrs \\ %{}) do
     AutomationResult.changeset(automation_result, attrs)
   end

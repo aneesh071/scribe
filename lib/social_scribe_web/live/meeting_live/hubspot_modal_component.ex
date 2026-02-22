@@ -195,11 +195,16 @@ defmodule SocialScribeWeb.MeetingLive.HubspotModalComponent do
     if socket.assigns.dropdown_open do
       {:noreply, assign(socket, dropdown_open: false)}
     else
-      # When opening dropdown with selected contact, search for similar contacts
       socket = assign(socket, dropdown_open: true, searching: true)
 
       query =
-        "#{socket.assigns.selected_contact.firstname} #{socket.assigns.selected_contact.lastname}"
+        case socket.assigns.selected_contact do
+          %{firstname: firstname, lastname: lastname} ->
+            "#{firstname} #{lastname}"
+
+          _ ->
+            socket.assigns.query
+        end
 
       send(self(), {:hubspot_search, query, socket.assigns.credential})
       {:noreply, socket}
