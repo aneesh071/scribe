@@ -196,5 +196,11 @@ defmodule SocialScribe.SalesforceApiTest do
     test "returns string without special chars unchanged" do
       assert SalesforceApi.escape_soql_string("John Smith") == "John Smith"
     end
+
+    test "escapes newline, carriage return, and tab" do
+      assert SalesforceApi.escape_soql_string("line1\nline2") == "line1\\nline2"
+      assert SalesforceApi.escape_soql_string("line1\rline2") == "line1\\rline2"
+      assert SalesforceApi.escape_soql_string("col1\tcol2") == "col1\\tcol2"
+    end
   end
 end

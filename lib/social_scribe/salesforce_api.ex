@@ -60,7 +60,8 @@ defmodule SocialScribe.SalesforceApi do
 
       case Tesla.get(client(cred), "/services/data/#{@api_version}/query/?q=#{encoded}") do
         {:ok, %Tesla.Env{status: 200, body: %{"records" => records}}} ->
-          {:ok, Enum.map(records, &format_contact/1)}
+          contacts = records |> Enum.map(&format_contact/1) |> Enum.reject(&is_nil/1)
+          {:ok, contacts}
 
         {:ok, %Tesla.Env{status: status, body: body}} ->
           {:error, {:api_error, status, body}}
@@ -180,6 +181,9 @@ defmodule SocialScribe.SalesforceApi do
     str
     |> String.replace("\\", "\\\\")
     |> String.replace("'", "\\'")
+    |> String.replace("\n", "\\n")
+    |> String.replace("\r", "\\r")
+    |> String.replace("\t", "\\t")
     |> String.replace("_", "\\_")
     |> String.replace("%", "\\%")
   end

@@ -41,7 +41,10 @@ defmodule SocialScribe.SalesforceTokenRefresher do
         {:ok, response_body}
 
       {:ok, %Tesla.Env{status: status, body: error_body}} ->
-        Logger.error("Salesforce token refresh failed: #{status} - #{inspect(error_body)}")
+        Logger.error(
+          "Salesforce token refresh failed: #{status} - #{error_body["error"] || "unknown"}"
+        )
+
         {:error, {status, error_body}}
 
       {:error, reason} ->
