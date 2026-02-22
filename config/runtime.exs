@@ -65,7 +65,14 @@ if config_env() == :prod do
   keepalive_opts =
     if System.get_env("FLY_APP_NAME") do
       # Linux on Fly.io -- aggressive keepalive to survive proxy idle timeouts
-      [keepalive: true, keepidle: 15, keepintvl: 5, keepcnt: 3]
+      # Raw TCP options required for OTP 27 (named options need OTP 28.3+)
+      # IPPROTO_TCP=6, TCP_KEEPIDLE=4, TCP_KEEPINTVL=5, TCP_KEEPCNT=6
+      [
+        {:raw, 6, 4, <<15::native-32>>},
+        {:raw, 6, 5, <<5::native-32>>},
+        {:raw, 6, 6, <<3::native-32>>},
+        keepalive: true
+      ]
     else
       [keepalive: true]
     end
