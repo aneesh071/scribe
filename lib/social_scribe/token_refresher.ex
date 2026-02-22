@@ -7,7 +7,7 @@ defmodule SocialScribe.TokenRefresher do
 
   @behaviour SocialScribe.TokenRefresherApi
 
-  def client do
+  defp client do
     middlewares = [
       {Tesla.Middleware.FormUrlencoded,
        encode: &Plug.Conn.Query.encode/1, decode: &Plug.Conn.Query.decode/1},
@@ -17,6 +17,7 @@ defmodule SocialScribe.TokenRefresher do
     Tesla.client(middlewares)
   end
 
+  @impl true
   def refresh_token(refresh_token_string) do
     client_id = Application.fetch_env!(:ueberauth, Ueberauth.Strategy.Google.OAuth)[:client_id]
 

@@ -7,6 +7,7 @@ defmodule SocialScribe.GoogleCalendar do
 
   @behaviour SocialScribe.GoogleCalendarApi
 
+  @impl true
   def list_events(token, start_time, end_time, calendar_id) do
     Tesla.get(client(token), "/calendars/#{calendar_id}/events",
       query: [
