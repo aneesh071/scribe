@@ -1,6 +1,13 @@
 defmodule SocialScribe.Accounts.UserCredential do
+  @moduledoc """
+  Schema for OAuth credentials linking users to external providers
+  (Google, LinkedIn, Facebook, HubSpot, Salesforce).
+  """
+
   use Ecto.Schema
   import Ecto.Changeset
+
+  @type t :: %__MODULE__{}
 
   schema "user_credentials" do
     field :token, :string

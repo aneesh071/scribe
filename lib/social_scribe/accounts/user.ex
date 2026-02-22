@@ -1,4 +1,9 @@
 defmodule SocialScribe.Accounts.User do
+  @moduledoc """
+  Schema for application users (financial advisors).
+  Supports password-based and OAuth registration.
+  """
+
   use Ecto.Schema
   import Ecto.Changeset
 

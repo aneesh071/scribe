@@ -1,4 +1,8 @@
 defmodule SocialScribe.Calendar.CalendarEvent do
+  @moduledoc """
+  Schema for synced Google Calendar events. Uses upsert on `[:user_id, :google_event_id]`.
+  """
+
   use Ecto.Schema
   import Ecto.Changeset
 

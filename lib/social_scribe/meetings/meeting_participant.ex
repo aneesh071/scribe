@@ -1,4 +1,8 @@
 defmodule SocialScribe.Meetings.MeetingParticipant do
+  @moduledoc """
+  Schema for meeting participants extracted from Recall.ai recordings.
+  """
+
   use Ecto.Schema
   import Ecto.Changeset
 

@@ -1,10 +1,16 @@
 defmodule SocialScribe.Meetings.Meeting do
+  @moduledoc """
+  Schema for client meetings created from completed Recall.ai bot recordings.
+  """
+
   use Ecto.Schema
   import Ecto.Changeset
 
   alias SocialScribe.Meetings.{MeetingTranscript, MeetingParticipant}
   alias SocialScribe.Calendar.CalendarEvent
   alias SocialScribe.Bots.RecallBot
+
+  @type t :: %__MODULE__{}
 
   schema "meetings" do
     field :title, :string
