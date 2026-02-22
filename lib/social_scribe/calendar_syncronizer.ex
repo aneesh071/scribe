@@ -42,10 +42,25 @@ defmodule SocialScribe.CalendarSyncronizer do
          :ok <- sync_items(items, credential.user_id, credential.id) do
       :ok
     else
+      {:error, :no_refresh_token} ->
+        Logger.warning(
+          "Skipping sync for credential #{credential.id} (#{credential.provider}): " <>
+            "no refresh token stored — user must reconnect their account"
+        )
+
+        {:error, :no_refresh_token}
+
       {:error, reason} ->
-        # Log errors but don't crash the sync for other accounts
         Logger.error("Failed to sync credential #{credential.id}: #{inspect(reason)}")
         {:error, reason}
+    end
+  end
+
+  defp ensure_valid_token(%UserCredential{refresh_token: nil} = credential) do
+    if DateTime.compare(credential.expires_at || DateTime.utc_now(), DateTime.utc_now()) == :lt do
+      {:error, :no_refresh_token}
+    else
+      {:ok, credential.token}
     end
   end
 
