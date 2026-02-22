@@ -64,11 +64,12 @@ defmodule Ueberauth.Strategy.Salesforce.OAuth do
       |> Keyword.put(:client_secret, config[:client_secret])
 
     case OAuth2.Client.get_token(client, params) do
-      {:ok, %{token: %{access_token: nil}}} ->
-        {:error, {"no_token", "No access token received from Salesforce"}}
-
-      {:ok, %{token: token}} ->
+      {:ok, %{token: %{access_token: access_token} = token}}
+      when is_binary(access_token) and access_token != "" ->
         {:ok, token}
+
+      {:ok, _client} ->
+        {:error, {"no_token", "No access token received from Salesforce"}}
 
       {:error, %OAuth2.Response{body: %{"error" => error, "error_description" => desc}}} ->
         {:error, {error, desc}}

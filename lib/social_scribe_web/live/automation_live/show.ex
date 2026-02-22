@@ -1,4 +1,8 @@
 defmodule SocialScribeWeb.AutomationLive.Show do
+  @moduledoc """
+  LiveView for displaying a single automation's details and toggling its active state.
+  """
+
   use SocialScribeWeb, :live_view
 
   alias SocialScribe.Automations

@@ -1,4 +1,8 @@
 defmodule SocialScribeWeb.AutomationLive.FormComponent do
+  @moduledoc """
+  A LiveComponent form for creating and editing automation records with real-time validation.
+  """
+
   use SocialScribeWeb, :live_component
 
   alias SocialScribe.Automations

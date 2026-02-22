@@ -43,6 +43,12 @@ defmodule SocialScribe.SalesforceSuggestions do
   @allowed_fields MapSet.new(Map.keys(@field_labels))
 
   @doc """
+  Returns the set of allowed Salesforce field names (derived from @field_labels).
+  """
+  @spec allowed_fields() :: MapSet.t(String.t())
+  def allowed_fields, do: @allowed_fields
+
+  @doc """
   Generates suggestions from a meeting transcript without contact data.
   Called first, then merged with contact after selection.
   """

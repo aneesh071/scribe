@@ -145,6 +145,16 @@ defmodule SocialScribe.SalesforceSuggestionsTest do
   end
 
   describe "field consistency" do
+    test "every allowed_field key exists in Fields.field_mapping (reverse direction)" do
+      allowed = SalesforceSuggestions.allowed_fields()
+      field_mapping_keys = MapSet.new(Map.keys(SocialScribe.Salesforce.Fields.field_mapping()))
+
+      extra_in_labels = MapSet.difference(allowed, field_mapping_keys)
+
+      assert MapSet.size(extra_in_labels) == 0,
+             "Keys in @field_labels not found in Fields.field_mapping/0: #{inspect(MapSet.to_list(extra_in_labels))}"
+    end
+
     test "all Fields.field_mapping keys are accepted by @allowed_fields" do
       Mox.verify_on_exit!()
 

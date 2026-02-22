@@ -1,4 +1,8 @@
 defmodule SocialScribeWeb.Router do
+  @moduledoc """
+  Defines all routes for SocialScribeWeb, including OAuth callbacks, authenticated dashboard LiveViews, and dev tools.
+  """
+
   use SocialScribeWeb, :router
 
   import Oban.Web.Router
