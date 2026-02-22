@@ -1,4 +1,11 @@
 defmodule SocialScribe.LinkedIn do
+  @moduledoc """
+  LinkedIn v2 API implementation.
+
+  Posts text shares to LinkedIn on behalf of authenticated users.
+  Implements the `SocialScribe.LinkedInApi` behaviour.
+  """
+
   require Logger
 
   @behaviour SocialScribe.LinkedInApi

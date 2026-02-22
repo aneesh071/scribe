@@ -1,4 +1,11 @@
 defmodule SocialScribe.Facebook do
+  @moduledoc """
+  Facebook Graph API v22.0 implementation.
+
+  Posts content to Facebook Pages and fetches user-managed pages.
+  Implements the `SocialScribe.FacebookApi` behaviour.
+  """
+
   @behaviour SocialScribe.FacebookApi
 
   require Logger

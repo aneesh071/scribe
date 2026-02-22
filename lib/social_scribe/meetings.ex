@@ -492,7 +492,7 @@ defmodule SocialScribe.Meetings do
       participants_string =
         participants
         |> Enum.map(fn participant ->
-          "#{participant.name} (#{if participant.is_host, do: "Host", else: "Participant"})"
+          "#{participant.name} (#{if participant.is_host == true, do: "Host", else: "Participant"})"
         end)
         |> Enum.join("\n")
 

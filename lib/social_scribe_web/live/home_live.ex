@@ -45,7 +45,7 @@ defmodule SocialScribeWeb.HomeLive do
   @impl true
   def handle_info({:schedule_bot, event}, socket) do
     socket =
-      if event.record_meeting do
+      if event.record_meeting == true do
         case Bots.create_and_dispatch_bot(socket.assigns.current_user, event) do
           {:ok, _} ->
             socket
