@@ -3,6 +3,7 @@ defmodule SocialScribe.HubspotTokenRefresher do
   Refreshes HubSpot OAuth tokens.
   """
 
+  alias SocialScribe.Accounts
   alias SocialScribe.Accounts.UserCredential
 
   @hubspot_token_url "https://api.hubapi.com/oauth/v1/token"
@@ -49,8 +50,6 @@ defmodule SocialScribe.HubspotTokenRefresher do
   """
   @spec refresh_credential(UserCredential.t()) :: {:ok, UserCredential.t()} | {:error, any()}
   def refresh_credential(credential) do
-    alias SocialScribe.Accounts
-
     case refresh_token(credential.refresh_token) do
       {:ok, response} ->
         attrs = %{

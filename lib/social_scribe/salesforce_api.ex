@@ -12,11 +12,11 @@ defmodule SocialScribe.SalesforceApi do
 
   @behaviour SocialScribe.SalesforceApiBehaviour
 
-  require Logger
-
   alias SocialScribe.Accounts.UserCredential
   alias SocialScribe.Salesforce.Fields
   alias SocialScribe.SalesforceTokenRefresher
+
+  require Logger
 
   @api_version "v62.0"
 
