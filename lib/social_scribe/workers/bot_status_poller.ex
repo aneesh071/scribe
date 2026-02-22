@@ -94,10 +94,16 @@ defmodule SocialScribe.Workers.BotStatusPoller do
             "Successfully created meeting record #{meeting.id} from bot #{bot_record.recall_bot_id}"
           )
 
-          SocialScribe.Workers.AIContentGenerationWorker.new(%{meeting_id: meeting.id})
-          |> Oban.insert()
+          case SocialScribe.Workers.AIContentGenerationWorker.new(%{meeting_id: meeting.id})
+               |> Oban.insert() do
+            {:ok, _job} ->
+              Logger.info("Enqueued AI content generation for meeting #{meeting.id}")
 
-          Logger.info("Enqueued AI content generation for meeting #{meeting.id}")
+            {:error, reason} ->
+              Logger.error(
+                "Failed to enqueue AI content generation for meeting #{meeting.id}: #{inspect(reason)}"
+              )
+          end
 
         {:error, reason} ->
           Logger.error(
