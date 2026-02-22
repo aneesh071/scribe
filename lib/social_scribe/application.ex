@@ -10,8 +10,7 @@ defmodule SocialScribe.Application do
     children = [
       SocialScribeWeb.Telemetry,
       SocialScribe.Repo,
-      # DNSCluster disabled - not needed for Cloud Run single-instance deployment
-      # {DNSCluster, query: Application.get_env(:social_scribe, :dns_cluster_query) || :ignore},
+      {DNSCluster, query: Application.get_env(:social_scribe, :dns_cluster_query) || :ignore},
       {Oban, Application.fetch_env!(:social_scribe, Oban)},
       {Phoenix.PubSub, name: SocialScribe.PubSub},
       # Start the Finch HTTP client for sending emails

@@ -40,3 +40,6 @@ npm-debug.log
 
 # Serena plugin local config
 .serena/
+
+# Claude Code local config
+.claude/
