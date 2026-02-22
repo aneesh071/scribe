@@ -6,6 +6,8 @@ defmodule SocialScribe.Bots.UserBotPreference do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @type t :: %__MODULE__{}
+
   schema "user_bot_preferences" do
     field :join_minute_offset, :integer, default: 2
     belongs_to :user, SocialScribe.Accounts.User

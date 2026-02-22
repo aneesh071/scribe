@@ -6,6 +6,8 @@ defmodule SocialScribe.Automations.Automation do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @type t :: %__MODULE__{}
+
   schema "automations" do
     field :name, :string
     field :description, :string

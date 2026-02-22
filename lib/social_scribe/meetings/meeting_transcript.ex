@@ -8,6 +8,8 @@ defmodule SocialScribe.Meetings.MeetingTranscript do
 
   alias SocialScribe.Meetings.Meeting
 
+  @type t :: %__MODULE__{}
+
   schema "meeting_transcripts" do
     field :content, :map
     field :language, :string

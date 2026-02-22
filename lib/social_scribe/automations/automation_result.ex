@@ -6,6 +6,8 @@ defmodule SocialScribe.Automations.AutomationResult do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @type t :: %__MODULE__{}
+
   schema "automation_results" do
     field :status, :string
     field :generated_content, :string

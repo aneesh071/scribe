@@ -6,6 +6,8 @@ defmodule SocialScribe.Bots.RecallBot do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @type t :: %__MODULE__{}
+
   schema "recall_bots" do
     field :status, :string
     field :recall_bot_id, :string

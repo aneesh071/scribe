@@ -173,10 +173,15 @@ defmodule SocialScribe.HubspotSuggestionsPropertyTest do
     end
   end
 
+  @field_atom_mapping Map.new(
+                        ~w(firstname lastname email phone mobilephone company jobtitle address city state zip country website linkedin_url twitter_handle),
+                        fn key -> {key, String.to_atom(key)} end
+                      )
+
   defp get_contact_value(contact, field) do
-    field_atom = String.to_existing_atom(field)
-    Map.get(contact, field_atom)
-  rescue
-    ArgumentError -> nil
+    case Map.get(@field_atom_mapping, field) do
+      nil -> nil
+      atom_key -> Map.get(contact, atom_key)
+    end
   end
 end

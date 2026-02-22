@@ -7,6 +7,8 @@ defmodule SocialScribe.Accounts.FacebookPageCredential do
   use Ecto.Schema
   import Ecto.Changeset
 
+  @type t :: %__MODULE__{}
+
   schema "facebook_page_credentials" do
     field :category, :string
     field :facebook_page_id, :string

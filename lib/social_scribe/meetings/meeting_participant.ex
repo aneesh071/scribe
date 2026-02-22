@@ -8,6 +8,8 @@ defmodule SocialScribe.Meetings.MeetingParticipant do
 
   alias SocialScribe.Meetings.Meeting
 
+  @type t :: %__MODULE__{}
+
   schema "meeting_participants" do
     field :recall_participant_id, :string
     field :name, :string

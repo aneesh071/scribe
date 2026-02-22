@@ -7,6 +7,8 @@ defmodule SocialScribe.Accounts.UserToken do
   import Ecto.Query
   alias SocialScribe.Accounts.UserToken
 
+  @type t :: %__MODULE__{}
+
   @rand_size 32
 
   # It is very important to keep the reset password token expiry short,

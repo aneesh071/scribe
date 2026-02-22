@@ -60,8 +60,8 @@ defmodule SocialScribe.HubspotApiPropertyTest do
         # Property: All keys in map come from updates with apply: true
         applied_fields =
           updates
-          |> Enum.filter(& &1[:apply])
-          |> Enum.map(& &1.field)
+          |> Enum.filter(fn u -> u[:apply] == true end)
+          |> Enum.map(fn u -> u.field end)
           |> MapSet.new()
 
         for {field, _value} <- updates_map do
@@ -84,7 +84,7 @@ defmodule SocialScribe.HubspotApiPropertyTest do
         for {field, value} <- updates_map do
           matching_updates =
             updates
-            |> Enum.filter(&(&1[:apply] && &1.field == field))
+            |> Enum.filter(fn u -> u[:apply] == true && u.field == field end)
 
           assert Enum.any?(matching_updates, &(&1.new_value == value)),
                  "Value #{inspect(value)} for #{field} should come from an applied update"
@@ -103,8 +103,8 @@ defmodule SocialScribe.HubspotApiPropertyTest do
 
         unique_applied_fields =
           updates
-          |> Enum.filter(& &1[:apply])
-          |> Enum.map(& &1.field)
+          |> Enum.filter(fn u -> u[:apply] == true end)
+          |> Enum.map(fn u -> u.field end)
           |> Enum.uniq()
           |> length()
 
