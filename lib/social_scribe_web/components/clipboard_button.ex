@@ -1,4 +1,8 @@
 defmodule SocialScribeWeb.ClipboardButtonComponent do
+  @moduledoc """
+  A LiveComponent that provides a copy-to-clipboard button with visual feedback on successful copy.
+  """
+
   use SocialScribeWeb, :live_component
 
   def render(assigns) do
@@ -56,6 +60,10 @@ defmodule SocialScribeWeb.ClipboardButtonComponent do
 end
 
 defmodule SocialScribeWeb.ClipboardButton do
+  @moduledoc """
+  A function component wrapper that renders `ClipboardButtonComponent` as a simple `clipboard_button/1` call.
+  """
+
   use SocialScribeWeb, :html
 
   attr :id, :string, required: true

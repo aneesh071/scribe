@@ -3,9 +3,12 @@ defmodule SocialScribe.HubspotTokenRefresher do
   Refreshes HubSpot OAuth tokens.
   """
 
+  alias SocialScribe.Accounts
+  alias SocialScribe.Accounts.UserCredential
+
   @hubspot_token_url "https://api.hubapi.com/oauth/v1/token"
 
-  def client do
+  defp client do
     Tesla.client([
       {Tesla.Middleware.FormUrlencoded,
        encode: &Plug.Conn.Query.encode/1, decode: &Plug.Conn.Query.decode/1},
@@ -17,6 +20,7 @@ defmodule SocialScribe.HubspotTokenRefresher do
   Refreshes a HubSpot access token using the refresh token.
   Returns {:ok, response_body} with new access_token, refresh_token, and expires_in.
   """
+  @spec refresh_token(String.t()) :: {:ok, map()} | {:error, any()}
   def refresh_token(refresh_token_string) do
     config = Application.get_env(:ueberauth, Ueberauth.Strategy.Hubspot.OAuth, [])
     client_id = config[:client_id]
@@ -44,9 +48,8 @@ defmodule SocialScribe.HubspotTokenRefresher do
   @doc """
   Refreshes the token for a HubSpot credential and updates it in the database.
   """
+  @spec refresh_credential(UserCredential.t()) :: {:ok, UserCredential.t()} | {:error, any()}
   def refresh_credential(credential) do
-    alias SocialScribe.Accounts
-
     case refresh_token(credential.refresh_token) do
       {:ok, response} ->
         attrs = %{
@@ -66,6 +69,11 @@ defmodule SocialScribe.HubspotTokenRefresher do
   Ensures a credential has a valid (non-expired) token.
   Refreshes if expired or about to expire (within 5 minutes).
   """
+  @spec ensure_valid_token(UserCredential.t()) :: {:ok, UserCredential.t()} | {:error, any()}
+  def ensure_valid_token(%{expires_at: nil} = credential) do
+    refresh_credential(credential)
+  end
+
   def ensure_valid_token(credential) do
     buffer_seconds = 300
 

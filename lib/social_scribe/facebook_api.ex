@@ -1,4 +1,11 @@
 defmodule SocialScribe.FacebookApi do
+  @moduledoc """
+  Behaviour and facade for the Facebook Graph API.
+
+  Defines callbacks for posting to Facebook Pages and fetching user pages.
+  Delegates to the configured implementation at runtime (default: `SocialScribe.Facebook`).
+  """
+
   @callback post_message_to_page(
               page_id :: String.t(),
               page_access_token :: String.t(),

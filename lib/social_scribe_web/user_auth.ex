@@ -1,4 +1,11 @@
 defmodule SocialScribeWeb.UserAuth do
+  @moduledoc """
+  Plug-based authentication helpers for both regular HTTP requests and LiveView.
+
+  Provides session management (login/logout/remember-me cookie), authentication
+  enforcement plugs, and LiveView `on_mount` hooks for route protection.
+  """
+
   use SocialScribeWeb, :verified_routes
 
   import Plug.Conn

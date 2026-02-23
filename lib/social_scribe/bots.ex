@@ -19,16 +19,25 @@ defmodule SocialScribe.Bots do
       [%RecallBot{}, ...]
 
   """
+  @spec list_recall_bots() :: [RecallBot.t()]
   def list_recall_bots do
     Repo.all(RecallBot)
   end
 
+  @staleness_hours 24
+
   @doc """
-  Lists all bots whose status is not yet "done" or "error".
-  These are the bots that the poller should check.
+  Lists all bots whose status is not yet "done" or "error" and were created
+  within the last #{@staleness_hours} hours. Prevents indefinite polling of stuck bots.
   """
+  @spec list_pending_bots() :: [RecallBot.t()]
   def list_pending_bots do
-    from(b in RecallBot, where: b.status not in ["done", "error", "polling_error"])
+    cutoff = DateTime.add(DateTime.utc_now(), -@staleness_hours, :hour)
+
+    from(b in RecallBot,
+      where: b.status not in ["done", "error", "polling_error"],
+      where: b.inserted_at >= ^cutoff
+    )
     |> Repo.all()
   end
 
@@ -46,6 +55,7 @@ defmodule SocialScribe.Bots do
       ** (Ecto.NoResultsError)
 
   """
+  @spec get_recall_bot!(integer()) :: RecallBot.t()
   def get_recall_bot!(id), do: Repo.get!(RecallBot, id)
 
   @doc """
@@ -60,6 +70,7 @@ defmodule SocialScribe.Bots do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec create_recall_bot(map()) :: {:ok, RecallBot.t()} | {:error, Ecto.Changeset.t()}
   def create_recall_bot(attrs \\ %{}) do
     %RecallBot{}
     |> RecallBot.changeset(attrs)
@@ -78,6 +89,8 @@ defmodule SocialScribe.Bots do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec update_recall_bot(RecallBot.t(), map()) ::
+          {:ok, RecallBot.t()} | {:error, Ecto.Changeset.t()}
   def update_recall_bot(%RecallBot{} = recall_bot, attrs) do
     recall_bot
     |> RecallBot.changeset(attrs)
@@ -96,6 +109,8 @@ defmodule SocialScribe.Bots do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec delete_recall_bot(RecallBot.t()) ::
+          {:ok, RecallBot.t()} | {:error, Ecto.Changeset.t()}
   def delete_recall_bot(%RecallBot{} = recall_bot) do
     Repo.delete(recall_bot)
   end
@@ -109,6 +124,7 @@ defmodule SocialScribe.Bots do
       %Ecto.Changeset{data: %RecallBot{}}
 
   """
+  @spec change_recall_bot(RecallBot.t(), map()) :: Ecto.Changeset.t()
   def change_recall_bot(%RecallBot{} = recall_bot, attrs \\ %{}) do
     RecallBot.changeset(recall_bot, attrs)
   end
@@ -118,6 +134,11 @@ defmodule SocialScribe.Bots do
   @doc """
   Orchestrates creating a bot via the API and saving it to the database.
   """
+  @spec create_and_dispatch_bot(
+          SocialScribe.Accounts.User.t(),
+          SocialScribe.Calendar.CalendarEvent.t()
+        ) ::
+          {:ok, RecallBot.t()} | {:error, Ecto.Changeset.t()} | {:error, {:api_error, any()}}
   def create_and_dispatch_bot(user, calendar_event) do
     user_bot_preference = get_user_bot_preference(user.id) || %UserBotPreference{}
     join_minute_offset = user_bot_preference.join_minute_offset
@@ -156,6 +177,11 @@ defmodule SocialScribe.Bots do
   @doc """
   Orchestrates deleting a bot via the API and removing it from the database.
   """
+  @spec cancel_and_delete_bot(SocialScribe.Calendar.CalendarEvent.t()) ::
+          {:ok, :no_bot_to_cancel}
+          | {:ok, RecallBot.t()}
+          | {:error, Ecto.Changeset.t()}
+          | {:error, {:api_error, any()}}
   def cancel_and_delete_bot(calendar_event) do
     case Repo.get_by(RecallBot, calendar_event_id: calendar_event.id) do
       nil ->
@@ -173,6 +199,8 @@ defmodule SocialScribe.Bots do
   @doc """
   Orchestrates updating a bot's schedule via the API and saving it to the database.
   """
+  @spec update_bot_schedule(RecallBot.t(), SocialScribe.Calendar.CalendarEvent.t()) ::
+          {:ok, RecallBot.t()} | {:error, Ecto.Changeset.t()} | {:error, any()}
   def update_bot_schedule(bot, calendar_event) do
     user_bot_preference = get_user_bot_preference(bot.user_id) || %UserBotPreference{}
     join_minute_offset = user_bot_preference.join_minute_offset
@@ -198,6 +226,7 @@ defmodule SocialScribe.Bots do
       [%UserBotPreference{}, ...]
 
   """
+  @spec list_user_bot_preferences() :: [UserBotPreference.t()]
   def list_user_bot_preferences do
     Repo.all(UserBotPreference)
   end
@@ -216,8 +245,10 @@ defmodule SocialScribe.Bots do
       ** (Ecto.NoResultsError)
 
   """
+  @spec get_user_bot_preference!(integer()) :: UserBotPreference.t()
   def get_user_bot_preference!(id), do: Repo.get!(UserBotPreference, id)
 
+  @spec get_user_bot_preference(integer()) :: UserBotPreference.t() | nil
   def get_user_bot_preference(user_id) do
     Repo.get_by(UserBotPreference, user_id: user_id)
   end
@@ -234,6 +265,8 @@ defmodule SocialScribe.Bots do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec create_user_bot_preference(map()) ::
+          {:ok, UserBotPreference.t()} | {:error, Ecto.Changeset.t()}
   def create_user_bot_preference(attrs \\ %{}) do
     %UserBotPreference{}
     |> UserBotPreference.changeset(attrs)
@@ -252,6 +285,8 @@ defmodule SocialScribe.Bots do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec update_user_bot_preference(UserBotPreference.t(), map()) ::
+          {:ok, UserBotPreference.t()} | {:error, Ecto.Changeset.t()}
   def update_user_bot_preference(%UserBotPreference{} = user_bot_preference, attrs) do
     user_bot_preference
     |> UserBotPreference.changeset(attrs)
@@ -270,6 +305,8 @@ defmodule SocialScribe.Bots do
       {:error, %Ecto.Changeset{}}
 
   """
+  @spec delete_user_bot_preference(UserBotPreference.t()) ::
+          {:ok, UserBotPreference.t()} | {:error, Ecto.Changeset.t()}
   def delete_user_bot_preference(%UserBotPreference{} = user_bot_preference) do
     Repo.delete(user_bot_preference)
   end
@@ -283,6 +320,7 @@ defmodule SocialScribe.Bots do
       %Ecto.Changeset{data: %UserBotPreference{}}
 
   """
+  @spec change_user_bot_preference(UserBotPreference.t(), map()) :: Ecto.Changeset.t()
   def change_user_bot_preference(%UserBotPreference{} = user_bot_preference, attrs \\ %{}) do
     UserBotPreference.changeset(user_bot_preference, attrs)
   end

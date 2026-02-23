@@ -1,4 +1,11 @@
 defmodule SocialScribeWeb.LiveHooks do
+  @moduledoc """
+  LiveView lifecycle hooks for the application.
+
+  Provides the `:assign_current_path` on_mount hook that tracks the current
+  URI path in socket assigns for sidebar active-state detection.
+  """
+
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [attach_hook: 4]
 

@@ -1,4 +1,8 @@
 defmodule SocialScribeWeb.Endpoint do
+  @moduledoc """
+  The Phoenix endpoint for SocialScribeWeb, handling HTTP requests, static files, and WebSocket connections.
+  """
+
   use Phoenix.Endpoint, otp_app: :social_scribe
 
   # The session will be stored in the cookie and signed,

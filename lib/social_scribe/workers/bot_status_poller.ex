@@ -1,4 +1,12 @@
 defmodule SocialScribe.Workers.BotStatusPoller do
+  @moduledoc """
+  Oban cron worker that polls pending Recall.ai bots for status updates.
+
+  Runs every 2 minutes. When a bot reports "done", fetches the transcript
+  and participant data, creates a Meeting record, and enqueues AI content
+  generation.
+  """
+
   use Oban.Worker, queue: :polling, max_attempts: 3
 
   alias SocialScribe.Bots
@@ -15,31 +23,40 @@ defmodule SocialScribe.Workers.BotStatusPoller do
       Logger.info("Polling #{Enum.count(bots_to_poll)} pending Recall.ai bots...")
     end
 
-    for bot_record <- bots_to_poll do
-      poll_and_process_bot(bot_record)
-    end
+    results = Enum.map(bots_to_poll, &poll_and_process_bot/1)
+    failures = Enum.filter(results, &match?(:error, &1))
 
-    :ok
+    if Enum.empty?(failures), do: :ok, else: {:error, "#{length(failures)} bot(s) failed polling"}
   end
 
   defp poll_and_process_bot(bot_record) do
     case RecallApi.get_bot(bot_record.recall_bot_id) do
       {:ok, %Tesla.Env{body: bot_api_info}} ->
         new_status =
-          bot_api_info
-          |> Map.get(:status_changes)
-          |> List.last()
-          |> Map.get(:code)
-
-        {:ok, updated_bot_record} = Bots.update_recall_bot(bot_record, %{status: new_status})
-
-        if new_status == "done" &&
-             is_nil(Meetings.get_meeting_by_recall_bot_id(updated_bot_record.id)) do
-          process_completed_bot(updated_bot_record, bot_api_info)
-        else
-          if new_status != bot_record.status do
-            Logger.info("Bot #{bot_record.recall_bot_id} status updated to: #{new_status}")
+          case bot_api_info |> Map.get(:status_changes) do
+            [_ | _] = changes -> changes |> List.last() |> Map.get(:code)
+            _ -> "unknown"
           end
+
+        case Bots.update_recall_bot(bot_record, %{status: new_status}) do
+          {:ok, updated_bot_record} ->
+            if new_status == "done" &&
+                 is_nil(Meetings.get_meeting_by_recall_bot_id(updated_bot_record.id)) do
+              process_completed_bot(updated_bot_record, bot_api_info)
+            else
+              if new_status != bot_record.status do
+                Logger.info("Bot #{bot_record.recall_bot_id} status updated to: #{new_status}")
+              end
+
+              :ok
+            end
+
+          {:error, reason} ->
+            Logger.error(
+              "Failed to update bot #{bot_record.recall_bot_id} status to #{new_status}: #{inspect(reason)}"
+            )
+
+            :error
         end
 
       {:error, reason} ->
@@ -47,39 +64,71 @@ defmodule SocialScribe.Workers.BotStatusPoller do
           "Failed to poll bot status for #{bot_record.recall_bot_id}: #{inspect(reason)}"
         )
 
-        Bots.update_recall_bot(bot_record, %{status: "polling_error"})
+        case Bots.update_recall_bot(bot_record, %{status: "polling_error"}) do
+          {:ok, _} ->
+            :error
+
+          {:error, update_reason} ->
+            Logger.error(
+              "Failed to mark bot #{bot_record.recall_bot_id} as polling_error: #{inspect(update_reason)}"
+            )
+
+            :error
+        end
     end
   end
 
   defp process_completed_bot(bot_record, bot_api_info) do
-    Logger.info("Bot #{bot_record.recall_bot_id} is done. Fetching transcript and participants...")
+    Logger.info(
+      "Bot #{bot_record.recall_bot_id} is done. Fetching transcript and participants..."
+    )
 
     with {:ok, %Tesla.Env{body: transcript_data}} <-
            RecallApi.get_bot_transcript(bot_record.recall_bot_id),
          {:ok, participants_data} <- fetch_participants(bot_record.recall_bot_id) do
-      Logger.info("Successfully fetched transcript and participants for bot #{bot_record.recall_bot_id}")
+      Logger.info(
+        "Successfully fetched transcript and participants for bot #{bot_record.recall_bot_id}"
+      )
 
-      case Meetings.create_meeting_from_recall_data(bot_record, bot_api_info, transcript_data, participants_data) do
+      case Meetings.create_meeting_from_recall_data(
+             bot_record,
+             bot_api_info,
+             transcript_data,
+             participants_data
+           ) do
         {:ok, meeting} ->
           Logger.info(
             "Successfully created meeting record #{meeting.id} from bot #{bot_record.recall_bot_id}"
           )
 
-          SocialScribe.Workers.AIContentGenerationWorker.new(%{meeting_id: meeting.id})
-          |> Oban.insert()
+          case SocialScribe.Workers.AIContentGenerationWorker.new(%{meeting_id: meeting.id})
+               |> Oban.insert() do
+            {:ok, _job} ->
+              Logger.info("Enqueued AI content generation for meeting #{meeting.id}")
+              :ok
 
-          Logger.info("Enqueued AI content generation for meeting #{meeting.id}")
+            {:error, reason} ->
+              Logger.error(
+                "Failed to enqueue AI content generation for meeting #{meeting.id}: #{inspect(reason)}"
+              )
+
+              :error
+          end
 
         {:error, reason} ->
           Logger.error(
             "Failed to create meeting record from bot #{bot_record.recall_bot_id}: #{inspect(reason)}"
           )
+
+          :error
       end
     else
       {:error, reason} ->
         Logger.error(
           "Failed to fetch data for bot #{bot_record.recall_bot_id} after completion: #{inspect(reason)}"
         )
+
+        :error
     end
   end
 
@@ -89,7 +138,10 @@ defmodule SocialScribe.Workers.BotStatusPoller do
         {:ok, participants_data}
 
       {:error, reason} ->
-        Logger.warning("Could not fetch participants for bot #{recall_bot_id}: #{inspect(reason)}, falling back to empty list")
+        Logger.warning(
+          "Could not fetch participants for bot #{recall_bot_id}: #{inspect(reason)}, falling back to empty list"
+        )
+
         {:ok, []}
     end
   end

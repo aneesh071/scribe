@@ -41,6 +41,10 @@ config :ueberauth, Ueberauth.Strategy.Hubspot.OAuth,
   client_id: System.get_env("HUBSPOT_CLIENT_ID"),
   client_secret: System.get_env("HUBSPOT_CLIENT_SECRET")
 
+config :ueberauth, Ueberauth.Strategy.Salesforce.OAuth,
+  client_id: System.get_env("SALESFORCE_CLIENT_ID"),
+  client_secret: System.get_env("SALESFORCE_CLIENT_SECRET")
+
 if System.get_env("PHX_SERVER") do
   config :social_scribe, SocialScribeWeb.Endpoint, server: true
 end
@@ -55,35 +59,57 @@ if config_env() == :prod do
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
+  # TCP keepalive prevents Fly.io's proxy (60s) and HAProxy (30m) from
+  # dropping idle database connections. OTP 27+ supports keepidle/keepintvl/keepcnt
+  # natively, but these are Linux-only. On macOS (local dev), use basic :keepalive.
+  keepalive_opts =
+    if System.get_env("FLY_APP_NAME") do
+      # Linux on Fly.io -- aggressive keepalive to survive proxy idle timeouts
+      # Raw TCP options required for OTP 27 (named options need OTP 28.3+)
+      # IPPROTO_TCP=6, TCP_KEEPIDLE=4, TCP_KEEPINTVL=5, TCP_KEEPCNT=6
+      [
+        {:raw, 6, 4, <<15::native-32>>},
+        {:raw, 6, 5, <<5::native-32>>},
+        {:raw, 6, 6, <<3::native-32>>},
+        keepalive: true
+      ]
+    else
+      [keepalive: true]
+    end
+
   # Parse DATABASE_URL for Cloud SQL Unix socket connections
   # Format: ecto://user:pass@localhost/db?socket=/cloudsql/project:region:instance
   uri = URI.parse(database_url)
-  socket_dir = if uri.query do
-    uri.query
-    |> URI.decode_query()
-    |> Map.get("socket")
-  end
 
-  repo_config = if socket_dir do
-    # For Cloud SQL socket connections, configure manually (don't use URL with host)
-    [userinfo_user, userinfo_pass] = String.split(uri.userinfo || ":", ":")
-    database = String.trim_leading(uri.path || "", "/")
+  socket_dir =
+    if uri.query do
+      uri.query
+      |> URI.decode_query()
+      |> Map.get("socket")
+    end
 
-    [
-      username: userinfo_user,
-      password: userinfo_pass,
-      database: database,
-      socket_dir: socket_dir,
-      pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10")
-    ]
-  else
-    # Standard TCP connection
-    [
-      url: database_url,
-      pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-      socket_options: maybe_ipv6
-    ]
-  end
+  repo_config =
+    if socket_dir do
+      # For Cloud SQL socket connections, configure manually (don't use URL with host)
+      [userinfo_user, userinfo_pass] = String.split(uri.userinfo || ":", ":")
+      database = String.trim_leading(uri.path || "", "/")
+
+      [
+        username: userinfo_user,
+        password: userinfo_pass,
+        database: database,
+        socket_dir: socket_dir,
+        pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10")
+      ]
+    else
+      # Standard TCP connection
+      [
+        url: database_url,
+        pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
+        socket_options: maybe_ipv6 ++ keepalive_opts,
+        disconnect_on_error_codes: [:"57P01"]
+      ]
+    end
 
   config :social_scribe, SocialScribe.Repo, repo_config
 
@@ -116,6 +142,12 @@ if config_env() == :prod do
 
   config :ueberauth, Ueberauth.Strategy.Google.OAuth,
     redirect_uri: "https://" <> host <> "/auth/google/callback"
+
+  config :ueberauth, Ueberauth.Strategy.LinkedIn.OAuth,
+    redirect_uri: "https://" <> host <> "/auth/linkedin/callback"
+
+  config :ueberauth, Ueberauth.Strategy.Facebook.OAuth,
+    redirect_uri: "https://" <> host <> "/auth/facebook/callback"
 
   # ## SSL Support
   #

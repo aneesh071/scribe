@@ -1,4 +1,8 @@
 defmodule SocialScribeWeb.MeetingLive.DraftPostFormComponent do
+  @moduledoc """
+  A LiveComponent form for editing and publishing AI-generated social media draft posts to LinkedIn or Facebook.
+  """
+
   use SocialScribeWeb, :live_component
   import SocialScribeWeb.ClipboardButton
 

@@ -1,6 +1,12 @@
 defmodule SocialScribe.Bots.RecallBot do
+  @moduledoc """
+  Schema for Recall.ai bot instances dispatched to record meetings.
+  """
+
   use Ecto.Schema
   import Ecto.Changeset
+
+  @type t :: %__MODULE__{}
 
   schema "recall_bots" do
     field :status, :string

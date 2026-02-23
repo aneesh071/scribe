@@ -15,13 +15,16 @@ defmodule SocialScribe.CalendarSyncronizer do
   Syncs events for a user.
 
   Currently, only works for the primary calendar and for meeting links that are either on the hangoutLink or location field.
-
-  #TODO: Add support for syncing only since the last sync time and record sync attempts
   """
   def sync_events_for_user(user) do
-    user
-    |> Accounts.list_user_credentials(provider: "google")
-    |> Task.async_stream(&fetch_and_sync_for_credential/1, ordered: false, on_timeout: :kill_task)
+    credentials = Accounts.list_user_credentials(user, provider: "google")
+
+    SocialScribe.TaskSupervisor
+    |> Task.Supervisor.async_stream_nolink(credentials, &fetch_and_sync_for_credential/1,
+      ordered: false,
+      on_timeout: :kill_task,
+      timeout: 30_000
+    )
     |> Stream.run()
 
     {:ok, :sync_complete}
@@ -39,10 +42,25 @@ defmodule SocialScribe.CalendarSyncronizer do
          :ok <- sync_items(items, credential.user_id, credential.id) do
       :ok
     else
+      {:error, :no_refresh_token} ->
+        Logger.warning(
+          "Skipping sync for credential #{credential.id} (#{credential.provider}): " <>
+            "no refresh token stored — user must reconnect their account"
+        )
+
+        {:error, :no_refresh_token}
+
       {:error, reason} ->
-        # Log errors but don't crash the sync for other accounts
         Logger.error("Failed to sync credential #{credential.id}: #{inspect(reason)}")
         {:error, reason}
+    end
+  end
+
+  defp ensure_valid_token(%UserCredential{refresh_token: nil} = credential) do
+    if DateTime.compare(credential.expires_at || DateTime.utc_now(), DateTime.utc_now()) == :lt do
+      {:error, :no_refresh_token}
+    else
+      {:ok, credential.token}
     end
   end
 
@@ -50,10 +68,15 @@ defmodule SocialScribe.CalendarSyncronizer do
     if DateTime.compare(credential.expires_at || DateTime.utc_now(), DateTime.utc_now()) == :lt do
       case TokenRefresherApi.refresh_token(credential.refresh_token) do
         {:ok, new_token_data} ->
-          {:ok, updated_credential} =
-            Accounts.update_credential_tokens(credential, new_token_data)
+          case Accounts.update_credential_tokens(credential, new_token_data) do
+            {:ok, updated_credential} ->
+              {:ok, updated_credential.token}
 
-          {:ok, updated_credential.token}
+            {:error, reason} ->
+              Logger.error("Failed to persist refreshed token for credential #{credential.id}")
+
+              {:error, {:token_persist_failed, reason}}
+          end
 
         {:error, reason} ->
           {:error, {:refresh_failed, reason}}

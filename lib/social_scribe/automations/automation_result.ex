@@ -1,6 +1,12 @@
 defmodule SocialScribe.Automations.AutomationResult do
+  @moduledoc """
+  Schema for AI-generated content produced by running an automation against a meeting transcript.
+  """
+
   use Ecto.Schema
   import Ecto.Changeset
+
+  @type t :: %__MODULE__{}
 
   schema "automation_results" do
     field :status, :string

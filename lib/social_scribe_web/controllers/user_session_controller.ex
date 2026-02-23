@@ -1,4 +1,9 @@
 defmodule SocialScribeWeb.UserSessionController do
+  @moduledoc """
+  Manages user session lifecycle: creates authenticated sessions on login
+  and destroys them on logout.
+  """
+
   use SocialScribeWeb, :controller
 
   alias SocialScribe.Accounts

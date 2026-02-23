@@ -18,7 +18,7 @@ defmodule SocialScribe.Recall do
     ])
   end
 
-  @impl SocialScribe.RecallApi
+  @impl true
   def create_bot(meeting_url, join_at) do
     body = %{
       meeting_url: meeting_url,
@@ -36,7 +36,7 @@ defmodule SocialScribe.Recall do
     Tesla.post(client(), "/bot", body)
   end
 
-  @impl SocialScribe.RecallApi
+  @impl true
   def update_bot(recall_bot_id, meeting_url, join_at) do
     body = %{
       meeting_url: meeting_url,
@@ -46,22 +46,23 @@ defmodule SocialScribe.Recall do
     Tesla.patch(client(), "/bot/#{recall_bot_id}", body)
   end
 
-  @impl SocialScribe.RecallApi
+  @impl true
   def delete_bot(recall_bot_id) do
     Tesla.delete(client(), "/bot/#{recall_bot_id}")
   end
 
-  @impl SocialScribe.RecallApi
+  @impl true
   def get_bot(recall_bot_id) do
     Tesla.get(client(), "/bot/#{recall_bot_id}")
   end
 
-  @impl SocialScribe.RecallApi
+  @impl true
   def get_bot_transcript(recall_bot_id) do
     with {:ok, %{body: bot_info}} <- get_bot(recall_bot_id),
          [%{id: recording_id} | _] <- Map.get(bot_info, :recordings, []),
          {:ok, %{body: recording}} <- get_recording(recording_id),
-         url when is_binary(url) <- get_in(recording, [:media_shortcuts, :transcript, :data, :download_url]) do
+         url when is_binary(url) <-
+           get_in(recording, [:media_shortcuts, :transcript, :data, :download_url]) do
       Tesla.client([{Tesla.Middleware.JSON, engine_opts: [keys: :atoms]}])
       |> Tesla.get(url)
     else
@@ -75,7 +76,7 @@ defmodule SocialScribe.Recall do
     Tesla.get(client(), "/recording/#{recording_id}")
   end
 
-  @impl SocialScribe.RecallApi
+  @impl true
   def get_bot_participants(recall_bot_id) do
     with {:ok, %{body: bot_info}} <- get_bot(recall_bot_id),
          [%{id: recording_id} | _] <- Map.get(bot_info, :recordings, []),
@@ -92,8 +93,8 @@ defmodule SocialScribe.Recall do
 
   defp get_participants_url(recording) do
     # Try media_shortcuts first (newer API structure)
+    # Fallback to direct participant_events (older structure)
     get_in(recording, [:media_shortcuts, :participant_events, :data, :participants_download_url]) ||
-      # Fallback to direct participant_events (older structure)
       get_in(recording, [:participant_events, :data, :participants_download_url])
   end
 end

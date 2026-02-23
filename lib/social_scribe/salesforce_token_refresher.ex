@@ -1,0 +1,141 @@
+defmodule SocialScribe.SalesforceTokenRefresher do
+  @moduledoc """
+  Handles refreshing Salesforce OAuth tokens.
+
+  Key differences from HubSpot:
+  - Refresh token is stable (no rotation by default)
+  - No expires_in in response — assume 2hr session timeout
+  - issued_at is in milliseconds
+  """
+
+  alias SocialScribe.Accounts.UserCredential
+  alias SocialScribe.Salesforce.Validation, as: SalesforceValidation
+
+  require Logger
+
+  @default_salesforce_token_url "https://login.salesforce.com/services/oauth2/token"
+  @refresh_buffer_seconds 300
+  @default_token_lifetime_seconds 7200
+
+  @doc """
+  Refreshes a Salesforce access token using the refresh token grant.
+
+  Makes a POST request to the Salesforce token endpoint with the stored refresh token.
+  Returns `{:ok, token_data}` with the new access token on success.
+  """
+  @spec refresh_token(String.t()) :: {:ok, map()} | {:error, any()}
+  def refresh_token(refresh_token_string) do
+    config = Application.get_env(:ueberauth, Ueberauth.Strategy.Salesforce.OAuth, [])
+
+    body = %{
+      grant_type: "refresh_token",
+      refresh_token: refresh_token_string,
+      client_id: config[:client_id],
+      client_secret: config[:client_secret]
+    }
+
+    token_url =
+      Application.get_env(:social_scribe, :salesforce_token_url, @default_salesforce_token_url)
+
+    case Tesla.post(client(), token_url, body) do
+      {:ok, %Tesla.Env{status: 200, body: response_body}} ->
+        {:ok, response_body}
+
+      {:ok, %Tesla.Env{status: status, body: error_body}} ->
+        Logger.error(
+          "Salesforce token refresh failed: #{status} - #{error_body["error"] || "unknown"}"
+        )
+
+        {:error, {status, error_body}}
+
+      {:error, reason} ->
+        Logger.error("Salesforce token refresh error: #{inspect(reason)}")
+        {:error, reason}
+    end
+  end
+
+  @doc """
+  Refreshes the token for a credential and persists the updated tokens to the database.
+
+  Returns `{:ok, updated_credential}` on success, `{:error, reason}` on failure.
+  """
+  @spec refresh_credential(UserCredential.t()) :: {:ok, UserCredential.t()} | {:error, any()}
+  def refresh_credential(credential) do
+    case refresh_token(credential.refresh_token) do
+      {:ok, response} ->
+        # Salesforce refresh typically does NOT return a new refresh_token,
+        # but orgs with "Rotate Refresh Tokens" enabled (opt-in since Spring 2024)
+        # will return a new one. Store it defensively if present.
+        attrs =
+          %{
+            token: response["access_token"],
+            expires_at:
+              DateTime.add(DateTime.utc_now(), @default_token_lifetime_seconds, :second),
+            instance_url:
+              validated_instance_url(response["instance_url"], credential.instance_url)
+          }
+          |> maybe_put_refresh_token(response)
+
+        SocialScribe.Accounts.update_user_credential(credential, attrs)
+
+      {:error, _} = error ->
+        error
+    end
+  end
+
+  @doc """
+  Returns the credential if its token is still valid, or refreshes it if expired.
+
+  A token is considered expired if `expires_at` is nil or in the past.
+  Returns `{:ok, credential}` with a valid token.
+  """
+  @spec ensure_valid_token(UserCredential.t()) :: {:ok, UserCredential.t()} | {:error, any()}
+  def ensure_valid_token(credential) do
+    if token_expired_or_expiring?(credential) do
+      refresh_credential(credential)
+    else
+      {:ok, credential}
+    end
+  end
+
+  defp token_expired_or_expiring?(credential) do
+    case credential.expires_at do
+      nil ->
+        true
+
+      expires_at ->
+        buffer = DateTime.add(DateTime.utc_now(), @refresh_buffer_seconds, :second)
+        DateTime.compare(expires_at, buffer) == :lt
+    end
+  end
+
+  # Validates instance_url from refresh response against allowed Salesforce domains.
+  # Falls back to the existing credential value if the response URL is missing or invalid.
+  defp validated_instance_url(url, fallback) when is_binary(url) and url != "" do
+    if SalesforceValidation.valid_salesforce_domain?(url) do
+      url
+    else
+      Logger.warning(
+        "Salesforce token refresh returned invalid instance_url domain, keeping existing value"
+      )
+
+      fallback
+    end
+  end
+
+  defp validated_instance_url(_url, fallback), do: fallback
+
+  # Salesforce orgs with "Rotate Refresh Tokens" enabled return a new refresh_token.
+  # Store it if present; otherwise keep the existing one.
+  defp maybe_put_refresh_token(attrs, %{"refresh_token" => new_rt}) when is_binary(new_rt),
+    do: Map.put(attrs, :refresh_token, new_rt)
+
+  defp maybe_put_refresh_token(attrs, _response), do: attrs
+
+  defp client do
+    Tesla.client([
+      Tesla.Middleware.FormUrlencoded,
+      Tesla.Middleware.JSON
+    ])
+  end
+end

@@ -6,11 +6,8 @@ defmodule SocialScribe.Workers.HubspotTokenRefresher do
 
   use Oban.Worker, queue: :default, max_attempts: 3
 
-  alias SocialScribe.Repo
-  alias SocialScribe.Accounts.UserCredential
+  alias SocialScribe.Accounts
   alias SocialScribe.HubspotTokenRefresher
-
-  import Ecto.Query
 
   require Logger
 
@@ -20,7 +17,8 @@ defmodule SocialScribe.Workers.HubspotTokenRefresher do
   def perform(_job) do
     Logger.info("Running proactive HubSpot token refresh check...")
 
-    expiring_credentials = get_expiring_hubspot_credentials()
+    threshold = DateTime.add(DateTime.utc_now(), @refresh_threshold_minutes, :minute)
+    expiring_credentials = Accounts.list_expiring_credentials("hubspot", threshold)
 
     case expiring_credentials do
       [] ->
@@ -31,17 +29,6 @@ defmodule SocialScribe.Workers.HubspotTokenRefresher do
         Logger.info("Found #{length(credentials)} HubSpot token(s) expiring soon, refreshing...")
         refresh_all(credentials)
     end
-  end
-
-  defp get_expiring_hubspot_credentials do
-    threshold = DateTime.add(DateTime.utc_now(), @refresh_threshold_minutes, :minute)
-
-    from(c in UserCredential,
-      where: c.provider == "hubspot",
-      where: c.expires_at < ^threshold,
-      where: not is_nil(c.refresh_token)
-    )
-    |> Repo.all()
   end
 
   defp refresh_all(credentials) do
@@ -57,18 +44,12 @@ defmodule SocialScribe.Workers.HubspotTokenRefresher do
               "Failed to proactively refresh HubSpot token for credential #{credential.id}: #{inspect(reason)}"
             )
 
-            {:error, credential.id, reason}
+            {:error, credential.id}
         end
       end)
 
-    errors = Enum.filter(results, &match?({:error, _, _}, &1))
+    failures = Enum.filter(results, &match?({:error, _}, &1))
 
-    if Enum.empty?(errors) do
-      :ok
-    else
-      # Return ok anyway - we don't want to retry the whole batch
-      # Individual failures are logged
-      :ok
-    end
+    if Enum.empty?(failures), do: :ok, else: {:error, "#{length(failures)} refresh(es) failed"}
   end
 end

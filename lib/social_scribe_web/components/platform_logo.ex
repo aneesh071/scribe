@@ -1,4 +1,8 @@
 defmodule SocialScribeWeb.PlatformLogo do
+  @moduledoc """
+  Renders SVG logos for meeting platforms (Google Meet, Zoom) based on the bot's meeting URL.
+  """
+
   use SocialScribeWeb, :html
 
   attr :recall_bot, :map, required: true

@@ -1,4 +1,8 @@
 defmodule SocialScribeWeb.Sidebar do
+  @moduledoc """
+  Renders the dashboard sidebar navigation with active-state highlighting based on the current path.
+  """
+
   use SocialScribeWeb, :html
 
   @doc """

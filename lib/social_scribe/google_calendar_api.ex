@@ -1,4 +1,11 @@
 defmodule SocialScribe.GoogleCalendarApi do
+  @moduledoc """
+  Behaviour and facade for the Google Calendar API.
+
+  Defines the callback for listing calendar events.
+  Delegates to the configured implementation at runtime (default: `SocialScribe.GoogleCalendar`).
+  """
+
   @callback list_events(
               token :: String.t(),
               start_time :: DateTime.t(),

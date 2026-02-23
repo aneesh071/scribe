@@ -11,6 +11,12 @@ module.exports = {
     "../lib/social_scribe_web.ex",
     "../lib/social_scribe_web/**/*.*ex"
   ],
+  safelist: [
+    {
+      pattern: /^(bg|text|border|accent)-(hubspot|salesforce)-.+/,
+      variants: ['hover'],
+    },
+  ],
   theme: {
     extend: {
       colors: {
@@ -33,7 +39,26 @@ module.exports = {
           arrow: "#BBBCBB",
           avatar: "#C6CCD1",
           "avatar-text": "#0C1216",
-        }
+        },
+        salesforce: {
+          overlay: "#B1B1B1",
+          card: "#f5f8fa",
+          input: "#C9C9C9",
+          icon: "#706E6B",
+          checkbox: "#0070D2",
+          pill: "#E1E5EA",
+          "pill-text": "#121418",
+          link: "#0070D2",
+          "link-hover": "#005FB2",
+          hide: "#706E6B",
+          "hide-hover": "#565A5E",
+          cancel: "#151515",
+          button: "#0070D2",
+          "button-hover": "#005FB2",
+          arrow: "#BBBCBB",
+          avatar: "#1B96FF",
+          "avatar-text": "#FFFFFF",
+        },
       }
     },
   },

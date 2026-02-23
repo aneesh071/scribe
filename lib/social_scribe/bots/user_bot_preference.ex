@@ -1,6 +1,12 @@
 defmodule SocialScribe.Bots.UserBotPreference do
+  @moduledoc """
+  Schema for per-user bot preferences (e.g., join_minute_offset for Recall.ai bots).
+  """
+
   use Ecto.Schema
   import Ecto.Changeset
+
+  @type t :: %__MODULE__{}
 
   schema "user_bot_preferences" do
     field :join_minute_offset, :integer, default: 2

@@ -1,7 +1,13 @@
 defmodule SocialScribe.Accounts.UserToken do
+  @moduledoc """
+  Schema for user session and password-reset tokens.
+  """
+
   use Ecto.Schema
   import Ecto.Query
   alias SocialScribe.Accounts.UserToken
+
+  @type t :: %__MODULE__{}
 
   @rand_size 32
 

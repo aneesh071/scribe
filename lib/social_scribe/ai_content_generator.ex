@@ -1,15 +1,25 @@
 defmodule SocialScribe.AIContentGenerator do
-  @moduledoc "Generates content using Google Gemini."
+  @moduledoc """
+  Generates AI content using Google Gemini.
+
+  Implements the `AIContentGeneratorApi` behaviour to provide:
+  - Follow-up email generation from meeting transcripts
+  - Automation content generation (social media posts)
+  - HubSpot CRM contact update suggestions
+  - Salesforce CRM contact update suggestions
+  """
 
   @behaviour SocialScribe.AIContentGeneratorApi
 
   alias SocialScribe.Meetings
   alias SocialScribe.Automations
 
-  @gemini_model "gemini-2.0-flash-lite"
+  require Logger
+
+  @gemini_model "gemini-2.0-flash"
   @gemini_api_base_url "https://generativelanguage.googleapis.com/v1beta/models"
 
-  @impl SocialScribe.AIContentGeneratorApi
+  @impl true
   def generate_follow_up_email(meeting) do
     case Meetings.generate_prompt_for_meeting(meeting) do
       {:error, reason} ->
@@ -28,7 +38,7 @@ defmodule SocialScribe.AIContentGenerator do
     end
   end
 
-  @impl SocialScribe.AIContentGeneratorApi
+  @impl true
   def generate_automation(automation, meeting) do
     case Meetings.generate_prompt_for_meeting(meeting) do
       {:error, reason} ->
@@ -45,7 +55,7 @@ defmodule SocialScribe.AIContentGenerator do
     end
   end
 
-  @impl SocialScribe.AIContentGeneratorApi
+  @impl true
   def generate_hubspot_suggestions(meeting) do
     case Meetings.generate_prompt_for_meeting(meeting) do
       {:error, reason} ->
@@ -101,8 +111,67 @@ defmodule SocialScribe.AIContentGenerator do
     end
   end
 
-  defp parse_hubspot_suggestions(response) do
-    # Clean up the response - remove markdown code blocks if present
+  @impl true
+  def generate_salesforce_suggestions(meeting) do
+    case Meetings.generate_prompt_for_meeting(meeting) do
+      {:error, reason} ->
+        {:error, reason}
+
+      {:ok, meeting_prompt} ->
+        prompt = """
+        You are an AI assistant that extracts contact information updates from meeting transcripts.
+
+        Analyze the following meeting transcript and extract any information that could be used to update a Salesforce Contact record.
+
+        Look for mentions of:
+        - Phone numbers (Phone, MobilePhone)
+        - Email addresses (Email)
+        - Job title/role (Title)
+        - Department (Department)
+        - Physical address details (MailingStreet, MailingCity, MailingState, MailingPostalCode, MailingCountry)
+
+        IMPORTANT: Only extract information that is EXPLICITLY mentioned in the transcript. Do not infer or guess.
+        IMPORTANT: When extracting any address fields (MailingStreet, MailingCity, MailingState, MailingPostalCode), you MUST also include a MailingCountry field. Infer the country from context (e.g., US state names like Oregon, California imply "United States"). Always use full country names (e.g., "United States" not "US", "United Kingdom" not "UK").
+
+        The transcript includes timestamps in [MM:SS] format at the start of each line.
+
+        Return your response as a JSON array of objects. Each object should have:
+        - "field": the Salesforce field name (use exactly: FirstName, LastName, Email, Phone, MobilePhone, Title, Department, MailingStreet, MailingCity, MailingState, MailingPostalCode, MailingCountry)
+        - "value": the extracted value
+        - "context": a brief quote of where this was mentioned
+        - "timestamp": the timestamp in MM:SS format where this was mentioned
+
+        If no contact information updates are found, return an empty array: []
+
+        Example response format:
+        [
+          {"field": "Phone", "value": "555-123-4567", "context": "John mentioned 'you can reach me at 555-123-4567'", "timestamp": "01:23"},
+          {"field": "Title", "value": "CTO", "context": "Sarah mentioned she was promoted to CTO", "timestamp": "05:47"}
+        ]
+
+        ONLY return valid JSON, no other text.
+
+        Meeting transcript:
+        #{meeting_prompt}
+        """
+
+        case call_gemini(prompt) do
+          {:ok, response} ->
+            parse_salesforce_suggestions(response)
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+    end
+  end
+
+  defp parse_salesforce_suggestions(response), do: parse_crm_suggestions(response)
+  defp parse_hubspot_suggestions(response), do: parse_crm_suggestions(response)
+
+  # Shared parser for CRM suggestion responses from Gemini.
+  # Both HubSpot and Salesforce use the same JSON format:
+  # [%{"field" => "...", "value" => "...", "context" => "...", "timestamp" => "..."}]
+  defp parse_crm_suggestions(response) do
     cleaned =
       response
       |> String.trim()
@@ -127,11 +196,12 @@ defmodule SocialScribe.AIContentGenerator do
 
         {:ok, formatted}
 
-      {:ok, _} ->
+      {:ok, _non_list} ->
+        Logger.warning("CRM suggestions response was valid JSON but not a list")
         {:ok, []}
 
-      {:error, _} ->
-        # If JSON parsing fails, return empty suggestions
+      {:error, decode_error} ->
+        Logger.warning("Failed to parse CRM suggestions JSON: #{inspect(decode_error)}")
         {:ok, []}
     end
   end

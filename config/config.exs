@@ -9,7 +9,7 @@ import Config
 
 config :social_scribe, Oban,
   engine: Oban.Engines.Basic,
-  notifier: Oban.Notifiers.Postgres,
+  notifier: Oban.Notifiers.PG,
   repo: SocialScribe.Repo,
   queues: [
     default: 10,
@@ -21,7 +21,8 @@ config :social_scribe, Oban,
     {Oban.Plugins.Cron,
      crontab: [
        {"*/2 * * * *", SocialScribe.Workers.BotStatusPoller},
-       {"*/5 * * * *", SocialScribe.Workers.HubspotTokenRefresher}
+       {"*/5 * * * *", SocialScribe.Workers.HubspotTokenRefresher},
+       {"*/30 * * * *", SocialScribe.Workers.SalesforceTokenRefresher}
      ]}
   ]
 
@@ -99,7 +100,8 @@ config :ueberauth, Ueberauth,
       {Ueberauth.Strategy.Hubspot,
        [
          default_scope: "crm.objects.contacts.read crm.objects.contacts.write oauth"
-       ]}
+       ]},
+    salesforce: {Ueberauth.Strategy.Salesforce, []}
   ]
 
 # Import environment specific config. This must remain at the bottom

@@ -1,4 +1,8 @@
 defmodule SocialScribeWeb.LandingLive do
+  @moduledoc """
+  The public landing page that introduces Social Scribe and prompts visitors to sign in via Google.
+  """
+
   use SocialScribeWeb, :live_view
 
   @impl true

@@ -1,6 +1,13 @@
 defmodule SocialScribe.Accounts.FacebookPageCredential do
+  @moduledoc """
+  Schema for Facebook page access tokens linked to a user.
+  Only one page per user may be selected at a time.
+  """
+
   use Ecto.Schema
   import Ecto.Changeset
+
+  @type t :: %__MODULE__{}
 
   schema "facebook_page_credentials" do
     field :category, :string

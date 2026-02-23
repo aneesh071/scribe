@@ -1,6 +1,12 @@
 defmodule SocialScribe.Automations.Automation do
+  @moduledoc """
+  Schema for user-defined automation templates targeting social platforms (LinkedIn, Facebook).
+  """
+
   use Ecto.Schema
   import Ecto.Changeset
+
+  @type t :: %__MODULE__{}
 
   schema "automations" do
     field :name, :string

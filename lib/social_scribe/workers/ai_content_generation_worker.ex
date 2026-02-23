@@ -1,10 +1,18 @@
 defmodule SocialScribe.Workers.AIContentGenerationWorker do
-  alias SocialScribe.Meetings.Meeting
+  @moduledoc """
+  Oban worker that generates AI content for completed meetings.
+
+  Triggered by BotStatusPoller when a Recall.ai bot finishes recording.
+  Generates a follow-up email draft via Gemini, then processes all active
+  user automations to create platform-specific social media content.
+  """
+
   use Oban.Worker, queue: :ai_content, max_attempts: 3
 
-  alias SocialScribe.Meetings
   alias SocialScribe.AIContentGeneratorApi
   alias SocialScribe.Automations
+  alias SocialScribe.Meetings
+  alias SocialScribe.Meetings.Meeting
 
   require Logger
 
@@ -22,8 +30,9 @@ defmodule SocialScribe.Workers.AIContentGenerationWorker do
           :ok ->
             if meeting.calendar_event && meeting.calendar_event.user_id do
               process_user_automations(meeting, meeting.calendar_event.user_id)
-              :ok
             end
+
+            :ok
 
           {:error, reason} ->
             {:error, reason}
@@ -69,33 +78,47 @@ defmodule SocialScribe.Workers.AIContentGenerationWorker do
         "Processing #{Enum.count(user_automations)} automations for meeting #{meeting.id}"
       )
 
-      for automation <- user_automations do
+      Enum.each(user_automations, fn automation ->
         case AIContentGeneratorApi.generate_automation(automation, meeting) do
           {:ok, generated_text} ->
-            Automations.create_automation_result(%{
-              automation_id: automation.id,
-              meeting_id: meeting.id,
-              generated_content: generated_text,
-              status: "draft"
-            })
+            case Automations.create_automation_result(%{
+                   automation_id: automation.id,
+                   meeting_id: meeting.id,
+                   generated_content: generated_text,
+                   status: "draft"
+                 }) do
+              {:ok, _result} ->
+                Logger.info(
+                  "Successfully generated content for automation '#{automation.name}', meeting #{meeting.id}"
+                )
 
-            Logger.info(
-              "Successfully generated content for automation '#{automation.name}', meeting #{meeting.id}"
-            )
+              {:error, changeset} ->
+                Logger.error(
+                  "Failed to save automation result for '#{automation.name}', meeting #{meeting.id}: #{inspect(changeset.errors)}"
+                )
+            end
 
           {:error, reason} ->
-            Automations.create_automation_result(%{
-              automation_id: automation.id,
-              meeting_id: meeting.id,
-              status: "generation_failed",
-              error_message: "Gemini API error: #{inspect(reason)}"
-            })
+            case Automations.create_automation_result(%{
+                   automation_id: automation.id,
+                   meeting_id: meeting.id,
+                   status: "generation_failed",
+                   error_message: "Gemini API error: #{inspect(reason)}"
+                 }) do
+              {:ok, _result} ->
+                :ok
+
+              {:error, changeset} ->
+                Logger.error(
+                  "Failed to save error result for automation '#{automation.name}', meeting #{meeting.id}: #{inspect(changeset.errors)}"
+                )
+            end
 
             Logger.error(
               "Failed to generate content for automation '#{automation.name}', meeting #{meeting.id}: #{inspect(reason)}"
             )
         end
-      end
+      end)
     end
   end
 end

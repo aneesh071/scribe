@@ -61,10 +61,11 @@ defmodule Ueberauth.Strategy.Hubspot.OAuth do
       |> Keyword.put(:client_secret, config[:client_secret])
 
     case opts |> client() |> OAuth2.Client.get_token(params) do
-      {:ok, %OAuth2.Client{token: %OAuth2.AccessToken{} = token}} ->
+      {:ok, %OAuth2.Client{token: %OAuth2.AccessToken{access_token: access_token} = token}}
+      when is_binary(access_token) and access_token != "" ->
         {:ok, token}
 
-      {:ok, %OAuth2.Client{token: nil}} ->
+      {:ok, _client} ->
         {:error, {"no_token", "No token returned from HubSpot"}}
 
       {:error, %OAuth2.Response{body: %{"error" => error, "error_description" => description}}} ->
@@ -89,7 +90,12 @@ defmodule Ueberauth.Strategy.Hubspot.OAuth do
         {:ok, body}
 
       {:ok, %Tesla.Env{status: status, body: body}} ->
-        {:error, "Failed to get token info: #{status} - #{inspect(body)}"}
+        message =
+          if is_map(body),
+            do: body["message"] || body["status"] || "unknown",
+            else: "non-JSON response"
+
+        {:error, "Failed to get token info: #{status} - #{message}"}
 
       {:error, reason} ->
         {:error, "HTTP error: #{inspect(reason)}"}

@@ -48,6 +48,8 @@ defmodule SocialScribe.HubspotApi do
   Returns up to 10 matching contacts with basic properties.
   Automatically refreshes token on 401/expired errors and retries once.
   """
+  @impl true
+  @spec search_contacts(UserCredential.t(), String.t()) :: {:ok, list(map())} | {:error, any()}
   def search_contacts(%UserCredential{} = credential, query) when is_binary(query) do
     with_token_refresh(credential, fn cred ->
       body = %{
@@ -74,6 +76,8 @@ defmodule SocialScribe.HubspotApi do
   Gets a single contact by ID with all properties.
   Automatically refreshes token on 401/expired errors and retries once.
   """
+  @impl true
+  @spec get_contact(UserCredential.t(), String.t()) :: {:ok, map()} | {:error, any()}
   def get_contact(%UserCredential{} = credential, contact_id) do
     with_token_refresh(credential, fn cred ->
       properties_param = Enum.join(@contact_properties, ",")
@@ -100,6 +104,8 @@ defmodule SocialScribe.HubspotApi do
   `updates` should be a map of property names to new values.
   Automatically refreshes token on 401/expired errors and retries once.
   """
+  @impl true
+  @spec update_contact(UserCredential.t(), String.t(), map()) :: {:ok, map()} | {:error, any()}
   def update_contact(%UserCredential{} = credential, contact_id, updates)
       when is_map(updates) do
     with_token_refresh(credential, fn cred ->
@@ -125,6 +131,9 @@ defmodule SocialScribe.HubspotApi do
   Batch updates multiple properties on a contact.
   This is a convenience wrapper around update_contact/3.
   """
+  @impl true
+  @spec apply_updates(UserCredential.t(), String.t(), list(map())) ::
+          {:ok, map() | :no_updates} | {:error, any()}
   def apply_updates(%UserCredential{} = credential, contact_id, updates_list)
       when is_list(updates_list) do
     updates_map =
@@ -190,7 +199,10 @@ defmodule SocialScribe.HubspotApi do
             Logger.info("HubSpot token expired, refreshing and retrying...")
             retry_with_fresh_token(credential, api_call)
           else
-            Logger.error("HubSpot API error: #{status} - #{inspect(body)}")
+            Logger.error(
+              "HubSpot API error: #{status} - #{body["message"] || body["status"] || "unknown"}"
+            )
+
             {:error, {:api_error, status, body}}
           end
 
@@ -205,11 +217,14 @@ defmodule SocialScribe.HubspotApi do
       {:ok, refreshed_credential} ->
         case api_call.(refreshed_credential) do
           {:error, {:api_error, status, body}} ->
-            Logger.error("HubSpot API error after refresh: #{status} - #{inspect(body)}")
+            Logger.error(
+              "HubSpot API error after refresh: #{status} - #{body["message"] || body["status"] || "unknown"}"
+            )
+
             {:error, {:api_error, status, body}}
 
           {:error, {:http_error, reason}} ->
-            Logger.error("HubSpot HTTP error after refresh: #{inspect(reason)}")
+            Logger.error("HubSpot HTTP error after token refresh")
             {:error, {:http_error, reason}}
 
           success ->
@@ -217,15 +232,17 @@ defmodule SocialScribe.HubspotApi do
         end
 
       {:error, refresh_error} ->
-        Logger.error("Failed to refresh HubSpot token: #{inspect(refresh_error)}")
+        Logger.error("Failed to refresh HubSpot token")
         {:error, {:token_refresh_failed, refresh_error}}
     end
   end
 
   defp is_token_error?(%{"status" => "BAD_CLIENT_ID"}), do: true
   defp is_token_error?(%{"status" => "UNAUTHORIZED"}), do: true
+
   defp is_token_error?(%{"message" => msg}) when is_binary(msg) do
     String.contains?(String.downcase(msg), ["token", "expired", "unauthorized", "client id"])
   end
+
   defp is_token_error?(_), do: false
 end

@@ -1,4 +1,8 @@
 defmodule SocialScribeWeb.Telemetry do
+  @moduledoc """
+  Telemetry supervisor that defines metrics for Phoenix, Ecto, and VM measurements.
+  """
+
   use Supervisor
   import Telemetry.Metrics
 
