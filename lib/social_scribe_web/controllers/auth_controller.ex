@@ -9,17 +9,11 @@ defmodule SocialScribeWeb.AuthController do
 
   alias SocialScribe.FacebookApi
   alias SocialScribe.Accounts
+  alias SocialScribe.Salesforce.Validation, as: SalesforceValidation
   alias SocialScribeWeb.UserAuth
   plug Ueberauth
 
   require Logger
-
-  # Allowed Salesforce instance URL domain patterns to prevent SSRF
-  @salesforce_domain_patterns [
-    ~r/\.salesforce\.com$/i,
-    ~r/\.force\.com$/i,
-    ~r/\.sfdc\.net$/i
-  ]
 
   @doc """
   Handles the initial request to the provider (e.g., Google).
@@ -156,7 +150,7 @@ defmodule SocialScribeWeb.AuthController do
         |> put_flash(:error, "Could not connect Salesforce: missing instance URL.")
         |> redirect(to: ~p"/dashboard/settings")
 
-      not valid_salesforce_domain?(instance_url) ->
+      not SalesforceValidation.valid_salesforce_domain?(instance_url) ->
         Logger.error(
           "Salesforce OAuth rejected instance_url with invalid domain for user #{user.id}"
         )
@@ -219,16 +213,4 @@ defmodule SocialScribeWeb.AuthController do
     |> put_flash(:error, "There was an error signing you in. Please try again.")
     |> redirect(to: ~p"/")
   end
-
-  defp valid_salesforce_domain?(url) when is_binary(url) do
-    case URI.parse(url) do
-      %URI{host: host} when is_binary(host) ->
-        Enum.any?(@salesforce_domain_patterns, &Regex.match?(&1, host))
-
-      _ ->
-        false
-    end
-  end
-
-  defp valid_salesforce_domain?(_), do: false
 end

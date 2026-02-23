@@ -101,7 +101,12 @@ defmodule Ueberauth.Strategy.Salesforce.OAuth do
         end
 
       {:ok, %Tesla.Env{status: status, body: body}} ->
-        {:error, "Salesforce user info failed (#{status}): #{inspect(body)}"}
+        message =
+          if is_map(body),
+            do: body["error_description"] || body["error"] || "unknown",
+            else: "non-JSON response"
+
+        {:error, "Salesforce user info failed (#{status}): #{message}"}
 
       {:error, reason} ->
         {:error, reason}

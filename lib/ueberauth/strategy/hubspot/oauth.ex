@@ -90,7 +90,12 @@ defmodule Ueberauth.Strategy.Hubspot.OAuth do
         {:ok, body}
 
       {:ok, %Tesla.Env{status: status, body: body}} ->
-        {:error, "Failed to get token info: #{status} - #{inspect(body)}"}
+        message =
+          if is_map(body),
+            do: body["message"] || body["status"] || "unknown",
+            else: "non-JSON response"
+
+        {:error, "Failed to get token info: #{status} - #{message}"}
 
       {:error, reason} ->
         {:error, "HTTP error: #{inspect(reason)}"}

@@ -9,6 +9,7 @@ defmodule SocialScribe.SalesforceTokenRefresher do
   """
 
   alias SocialScribe.Accounts.UserCredential
+  alias SocialScribe.Salesforce.Validation, as: SalesforceValidation
 
   require Logger
 
@@ -70,7 +71,8 @@ defmodule SocialScribe.SalesforceTokenRefresher do
             token: response["access_token"],
             expires_at:
               DateTime.add(DateTime.utc_now(), @default_token_lifetime_seconds, :second),
-            instance_url: response["instance_url"] || credential.instance_url
+            instance_url:
+              validated_instance_url(response["instance_url"], credential.instance_url)
           }
           |> maybe_put_refresh_token(response)
 
@@ -106,6 +108,22 @@ defmodule SocialScribe.SalesforceTokenRefresher do
         DateTime.compare(expires_at, buffer) == :lt
     end
   end
+
+  # Validates instance_url from refresh response against allowed Salesforce domains.
+  # Falls back to the existing credential value if the response URL is missing or invalid.
+  defp validated_instance_url(url, fallback) when is_binary(url) and url != "" do
+    if SalesforceValidation.valid_salesforce_domain?(url) do
+      url
+    else
+      Logger.warning(
+        "Salesforce token refresh returned invalid instance_url domain, keeping existing value"
+      )
+
+      fallback
+    end
+  end
+
+  defp validated_instance_url(_url, fallback), do: fallback
 
   # Salesforce orgs with "Rotate Refresh Tokens" enabled return a new refresh_token.
   # Store it if present; otherwise keep the existing one.
