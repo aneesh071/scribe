@@ -94,6 +94,9 @@ defmodule SocialScribeWeb.UserSettingsLive do
 
     case create_or_update_user_bot_preference(socket.assigns.user_bot_preference, params) do
       {:ok, bot_preference} ->
+        # Reschedule any pending bots with the new offset
+        send(self(), {:reschedule_bots, socket.assigns.current_user.id})
+
         {:noreply,
          socket
          |> assign(:user_bot_preference, bot_preference)
@@ -130,6 +133,12 @@ defmodule SocialScribeWeb.UserSettingsLive do
             {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
         end
     end
+  end
+
+  @impl true
+  def handle_info({:reschedule_bots, user_id}, socket) do
+    Bots.reschedule_pending_bots_for_user(user_id)
+    {:noreply, socket}
   end
 
   defp create_or_update_user_bot_preference(bot_preference, params) do

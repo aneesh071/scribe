@@ -6,6 +6,8 @@ defmodule SocialScribe.Bots do
   import Ecto.Query, warn: false
   alias SocialScribe.Repo
 
+  require Logger
+
   alias SocialScribe.Bots.RecallBot
   alias SocialScribe.Bots.UserBotPreference
   alias SocialScribe.RecallApi
@@ -211,10 +213,43 @@ defmodule SocialScribe.Bots do
              calendar_event.hangout_link,
              DateTime.add(calendar_event.start_time, -join_minute_offset, :minute)
            ) do
-      update_recall_bot(bot, %{
-        status: api_response.status_changes |> List.first() |> Map.get(:code)
-      })
+      status =
+        case api_response do
+          %{status_changes: [%{code: code} | _]} -> code
+          _ -> bot.status
+        end
+
+      update_recall_bot(bot, %{status: status})
     end
+  end
+
+  @doc """
+  Reschedules all pending bots for a user with the current bot preference offset.
+
+  Called when the user updates their join_minute_offset in settings, so that
+  already-scheduled bots are updated via the Recall.ai API.
+  """
+  @spec reschedule_pending_bots_for_user(integer()) :: :ok
+  def reschedule_pending_bots_for_user(user_id) do
+    pending_bots =
+      from(b in RecallBot,
+        where: b.user_id == ^user_id,
+        where: b.status not in ["done", "error", "polling_error"],
+        preload: [:calendar_event]
+      )
+      |> Repo.all()
+
+    for bot <- pending_bots, bot.calendar_event != nil do
+      case update_bot_schedule(bot, bot.calendar_event) do
+        {:ok, _} ->
+          Logger.info("Rescheduled bot #{bot.recall_bot_id} with updated offset")
+
+        {:error, reason} ->
+          Logger.warning("Failed to reschedule bot #{bot.recall_bot_id}: #{inspect(reason)}")
+      end
+    end
+
+    :ok
   end
 
   @doc """
