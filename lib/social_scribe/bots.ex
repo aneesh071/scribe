@@ -42,6 +42,40 @@ defmodule SocialScribe.Bots do
   end
 
   @doc """
+  Lists pending bots for a specific user. Used to reschedule bots when
+  the user updates their join_minute_offset preference.
+  """
+  @spec list_pending_bots_for_user(integer()) :: [RecallBot.t()]
+  def list_pending_bots_for_user(user_id) do
+    cutoff = DateTime.add(DateTime.utc_now(), -@staleness_hours, :hour)
+
+    from(b in RecallBot,
+      where: b.user_id == ^user_id,
+      where: b.status not in ["done", "error", "polling_error"],
+      where: b.inserted_at >= ^cutoff,
+      preload: [:calendar_event]
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Reschedules all pending bots for a user using their current bot preference.
+  Called when the user updates their join_minute_offset setting.
+  """
+  @spec reschedule_pending_bots(integer()) :: :ok
+  def reschedule_pending_bots(user_id) do
+    pending_bots = list_pending_bots_for_user(user_id)
+
+    Enum.each(pending_bots, fn bot ->
+      if bot.calendar_event do
+        update_bot_schedule(bot, bot.calendar_event)
+      end
+    end)
+
+    :ok
+  end
+
+  @doc """
   Gets a single recall_bot.
 
   Raises `Ecto.NoResultsError` if the Recall bot does not exist.
@@ -197,23 +231,36 @@ defmodule SocialScribe.Bots do
   end
 
   @doc """
-  Orchestrates updating a bot's schedule via the API and saving it to the database.
+  Orchestrates updating a bot's schedule by deleting and recreating it.
+  Recall.ai treats `join_at` as read-only on PATCH, so the only way to
+  change when a bot joins is to delete the old bot and create a new one.
   """
   @spec update_bot_schedule(RecallBot.t(), SocialScribe.Calendar.CalendarEvent.t()) ::
           {:ok, RecallBot.t()} | {:error, Ecto.Changeset.t()} | {:error, any()}
   def update_bot_schedule(bot, calendar_event) do
     user_bot_preference = get_user_bot_preference(bot.user_id) || %UserBotPreference{}
     join_minute_offset = user_bot_preference.join_minute_offset
+    new_join_at = DateTime.add(calendar_event.start_time, -join_minute_offset, :minute)
 
-    with {:ok, %{body: api_response}} <-
-           RecallApi.update_bot(
-             bot.recall_bot_id,
-             calendar_event.hangout_link,
-             DateTime.add(calendar_event.start_time, -join_minute_offset, :minute)
-           ) do
+    with {:ok, _} <- RecallApi.delete_bot(bot.recall_bot_id),
+         {:ok, %{status: status, body: api_response}} when status in 200..299 <-
+           RecallApi.create_bot(calendar_event.hangout_link, new_join_at),
+         %{id: new_bot_id} <- api_response do
+      new_status = get_in(api_response, [:status_changes, Access.at(0), :code]) || "ready"
+
       update_recall_bot(bot, %{
-        status: api_response.status_changes |> List.first() |> Map.get(:code)
+        recall_bot_id: new_bot_id,
+        status: new_status
       })
+    else
+      {:ok, %{status: status, body: body}} ->
+        {:error, {:api_error, {status, body}}}
+
+      {:error, reason} ->
+        {:error, {:api_error, reason}}
+
+      _ ->
+        {:error, {:api_error, :invalid_response}}
     end
   end
 

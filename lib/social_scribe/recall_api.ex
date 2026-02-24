@@ -26,8 +26,8 @@ defmodule SocialScribe.RecallApi do
   @callback get_bot_participants(recall_bot_id :: String.t()) ::
               {:ok, Tesla.Env.t()} | {:error, any()}
 
-  def create_bot(meeting_url, join_offset_minutes) do
-    impl().create_bot(meeting_url, join_offset_minutes)
+  def create_bot(meeting_url, join_at) do
+    impl().create_bot(meeting_url, join_at)
   end
 
   def update_bot(recall_bot_id, meeting_url, join_at) do

@@ -18,7 +18,20 @@ defmodule SocialScribeWeb.AuthController do
   @doc """
   Handles the initial request to the provider (e.g., Google).
   Ueberauth's plug will redirect the user to the provider's consent page.
+  If the strategy sets errors (e.g., missing configuration), redirects with flash.
   """
+  def request(%{assigns: %{ueberauth_failure: failure}} = conn, _params) do
+    message =
+      failure.errors
+      |> Enum.map_join("; ", fn e -> e.message end)
+
+    Logger.error("OAuth request failed: #{message}")
+
+    conn
+    |> put_flash(:error, message)
+    |> redirect(to: ~p"/dashboard/settings")
+  end
+
   def request(conn, _params) do
     render(conn, :request)
   end

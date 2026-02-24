@@ -236,17 +236,22 @@ defmodule SocialScribe.BotsTest do
       assert {:ok, :no_bot_to_cancel} = Bots.cancel_and_delete_bot(calendar_event)
     end
 
-    test "update_bot_schedule/2 updates bot schedule via API and saves to database" do
+    test "update_bot_schedule/2 deletes and recreates bot with updated join_at" do
       calendar_event = calendar_event_fixture()
       bot = recall_bot_fixture(%{calendar_event_id: calendar_event.id})
 
-      expect(RecallApiMock, :update_bot, fn _bot_id, _meeting_url, start_time ->
+      expect(RecallApiMock, :delete_bot, fn _bot_id ->
+        {:ok, %{status: 200}}
+      end)
+
+      expect(RecallApiMock, :create_bot, fn _meeting_url, start_time ->
         assert start_time == DateTime.add(calendar_event.start_time, -2, :minute)
 
         {:ok,
          %{
+           status: 200,
            body: %{
-             id: "recall_bot_123",
+             id: "new_recall_bot_456",
              video_url: nil,
              status_changes: [
                %{
@@ -257,9 +262,7 @@ defmodule SocialScribe.BotsTest do
              ],
              meeting_metadata: nil,
              meeting_participants: [],
-             speaker_timeline: %{
-               timeline: []
-             },
+             speaker_timeline: %{timeline: []},
              calendar_meeting_id: nil,
              calendar_user_id: nil,
              calendar_meetings: []
@@ -269,6 +272,7 @@ defmodule SocialScribe.BotsTest do
 
       assert {:ok, %RecallBot{} = updated_bot} = Bots.update_bot_schedule(bot, calendar_event)
       assert updated_bot.status == "ready"
+      assert updated_bot.recall_bot_id == "new_recall_bot_456"
     end
 
     test "update_bot_schedule/2 uses user_bot_preference join_minute_offset" do
@@ -278,13 +282,18 @@ defmodule SocialScribe.BotsTest do
       _user_bot_preference =
         user_bot_preference_fixture(%{user_id: bot.user_id, join_minute_offset: 10})
 
-      expect(RecallApiMock, :update_bot, fn _bot_id, _meeting_url, start_time ->
+      expect(RecallApiMock, :delete_bot, fn _bot_id ->
+        {:ok, %{status: 200}}
+      end)
+
+      expect(RecallApiMock, :create_bot, fn _meeting_url, start_time ->
         assert start_time == DateTime.add(calendar_event.start_time, -10, :minute)
 
         {:ok,
          %{
+           status: 200,
            body: %{
-             id: "recall_bot_123",
+             id: "new_recall_bot_789",
              video_url: nil,
              status_changes: [
                %{
@@ -295,9 +304,7 @@ defmodule SocialScribe.BotsTest do
              ],
              meeting_metadata: nil,
              meeting_participants: [],
-             speaker_timeline: %{
-               timeline: []
-             },
+             speaker_timeline: %{timeline: []},
              calendar_meeting_id: nil,
              calendar_user_id: nil,
              calendar_meetings: []
@@ -309,16 +316,102 @@ defmodule SocialScribe.BotsTest do
       assert updated_bot.status == "ready"
     end
 
-    test "update_bot_schedule/2 handles API errors" do
+    test "update_bot_schedule/2 handles delete API errors" do
       calendar_event = calendar_event_fixture()
       bot = recall_bot_fixture(%{calendar_event_id: calendar_event.id})
 
-      # Mock API error
-      expect(RecallApiMock, :update_bot, fn _bot_id, _meeting_url, _start_time ->
+      expect(RecallApiMock, :delete_bot, fn _bot_id ->
         {:error, "API Error"}
       end)
 
-      assert {:error, "API Error"} = Bots.update_bot_schedule(bot, calendar_event)
+      assert {:error, {:api_error, "API Error"}} =
+               Bots.update_bot_schedule(bot, calendar_event)
+    end
+
+    test "list_pending_bots_for_user/1 returns pending bots for a specific user" do
+      user = user_fixture()
+      calendar_event = calendar_event_fixture(%{user_id: user.id})
+
+      bot =
+        recall_bot_fixture(%{
+          user_id: user.id,
+          calendar_event_id: calendar_event.id,
+          status: "ready"
+        })
+
+      # Another user's bot should not be included
+      other_user = user_fixture()
+      other_event = calendar_event_fixture(%{user_id: other_user.id})
+
+      _other_bot =
+        recall_bot_fixture(%{
+          user_id: other_user.id,
+          calendar_event_id: other_event.id,
+          status: "ready"
+        })
+
+      # Done bots should not be included
+      done_event = calendar_event_fixture(%{user_id: user.id})
+
+      _done_bot =
+        recall_bot_fixture(%{
+          user_id: user.id,
+          calendar_event_id: done_event.id,
+          status: "done"
+        })
+
+      result = Bots.list_pending_bots_for_user(user.id)
+      assert length(result) == 1
+      assert hd(result).id == bot.id
+      assert hd(result).calendar_event != nil
+    end
+
+    test "reschedule_pending_bots/1 reschedules all pending bots for a user" do
+      user = user_fixture()
+
+      _user_bot_preference =
+        user_bot_preference_fixture(%{user_id: user.id, join_minute_offset: 7})
+
+      calendar_event = calendar_event_fixture(%{user_id: user.id})
+
+      _bot =
+        recall_bot_fixture(%{
+          user_id: user.id,
+          calendar_event_id: calendar_event.id,
+          status: "ready"
+        })
+
+      expect(RecallApiMock, :delete_bot, fn _bot_id ->
+        {:ok, %{status: 200}}
+      end)
+
+      expect(RecallApiMock, :create_bot, fn _meeting_url, start_time ->
+        assert start_time == DateTime.add(calendar_event.start_time, -7, :minute)
+
+        {:ok,
+         %{
+           status: 200,
+           body: %{
+             id: "new_recall_bot_reschedule",
+             video_url: nil,
+             status_changes: [
+               %{
+                 code: "ready",
+                 message: nil,
+                 created_at: "2023-03-23T18:59:40.391872Z"
+               }
+             ],
+             meeting_metadata: nil,
+             meeting_participants: [],
+             speaker_timeline: %{timeline: []},
+             calendar_meeting_id: nil,
+             calendar_user_id: nil,
+             calendar_meetings: []
+           }
+         }}
+      end)
+
+      assert :ok = Bots.reschedule_pending_bots(user.id)
     end
   end
 

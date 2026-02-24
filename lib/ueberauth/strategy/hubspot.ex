@@ -17,15 +17,26 @@ defmodule Ueberauth.Strategy.Hubspot do
   """
   @impl true
   def handle_request!(conn) do
-    scopes = conn.params["scope"] || option(conn, :default_scope)
+    config = Application.get_env(:ueberauth, Ueberauth.Strategy.Hubspot.OAuth, [])
 
-    opts =
-      [scope: scopes, redirect_uri: callback_url(conn)]
-      |> with_optional(:prompt, conn)
-      |> with_param(:prompt, conn)
-      |> with_state_param(conn)
+    if is_nil(config[:client_id]) or config[:client_id] == "" do
+      set_errors!(conn, [
+        error(
+          "missing_client_id",
+          "HubSpot OAuth client_id is not configured. Set the HUBSPOT_CLIENT_ID environment variable."
+        )
+      ])
+    else
+      scopes = conn.params["scope"] || option(conn, :default_scope)
 
-    redirect!(conn, Ueberauth.Strategy.Hubspot.OAuth.authorize_url!(opts))
+      opts =
+        [scope: scopes, redirect_uri: callback_url(conn)]
+        |> with_optional(:prompt, conn)
+        |> with_param(:prompt, conn)
+        |> with_state_param(conn)
+
+      redirect!(conn, Ueberauth.Strategy.Hubspot.OAuth.authorize_url!(opts))
+    end
   end
 
   @doc """

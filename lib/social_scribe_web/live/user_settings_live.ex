@@ -9,6 +9,8 @@ defmodule SocialScribeWeb.UserSettingsLive do
   alias SocialScribe.Accounts
   alias SocialScribe.Bots
 
+  require Logger
+
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
@@ -94,15 +96,34 @@ defmodule SocialScribeWeb.UserSettingsLive do
 
     case create_or_update_user_bot_preference(socket.assigns.user_bot_preference, params) do
       {:ok, bot_preference} ->
+        send(self(), {:reschedule_bots, socket.assigns.current_user.id})
+
         {:noreply,
          socket
          |> assign(:user_bot_preference, bot_preference)
+         |> assign(
+           :user_bot_preference_form,
+           to_form(Bots.change_user_bot_preference(bot_preference))
+         )
          |> put_flash(:info, "Bot preference updated successfully")}
 
       {:error, changeset} ->
         {:noreply,
          assign(socket, :user_bot_preference_form, to_form(changeset, action: :validate))}
     end
+  end
+
+  @impl true
+  def handle_info({:reschedule_bots, user_id}, socket) do
+    case Bots.reschedule_pending_bots(user_id) do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        Logger.error("Failed to reschedule bots for user #{user_id}: #{inspect(reason)}")
+    end
+
+    {:noreply, socket}
   end
 
   @impl true

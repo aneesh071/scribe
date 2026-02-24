@@ -115,9 +115,20 @@ defmodule Ueberauth.Strategy.Hubspot.OAuth do
 
   @impl OAuth2.Strategy
   def get_token(client, params, headers) do
+    {code, params} = Keyword.pop(params, :code, client.params["code"])
+
+    # HubSpot only supports client_secret_post (credentials in the POST body).
+    # We must NOT delegate to AuthCode.get_token/3 because it calls basic_auth(),
+    # which adds an Authorization: Basic header that HubSpot rejects with
+    # "An invalid app client_id was provided".
     client
+    |> put_param(:code, code)
     |> put_param(:grant_type, "authorization_code")
+    |> put_param(:client_id, client.client_id)
+    |> put_param(:client_secret, client.client_secret)
+    |> put_param(:redirect_uri, client.redirect_uri)
+    |> merge_params(params)
     |> put_header("Content-Type", "application/x-www-form-urlencoded")
-    |> OAuth2.Strategy.AuthCode.get_token(params, headers)
+    |> put_headers(headers)
   end
 end
