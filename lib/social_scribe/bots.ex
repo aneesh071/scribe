@@ -231,10 +231,13 @@ defmodule SocialScribe.Bots do
   """
   @spec reschedule_pending_bots_for_user(integer()) :: :ok
   def reschedule_pending_bots_for_user(user_id) do
+    cutoff = DateTime.add(DateTime.utc_now(), -@staleness_hours, :hour)
+
     pending_bots =
       from(b in RecallBot,
         where: b.user_id == ^user_id,
         where: b.status not in ["done", "error", "polling_error"],
+        where: b.inserted_at >= ^cutoff,
         preload: [:calendar_event]
       )
       |> Repo.all()

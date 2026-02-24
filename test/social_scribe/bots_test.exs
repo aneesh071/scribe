@@ -320,6 +320,104 @@ defmodule SocialScribe.BotsTest do
 
       assert {:error, "API Error"} = Bots.update_bot_schedule(bot, calendar_event)
     end
+
+    test "update_bot_schedule/2 preserves bot status when API response lacks status_changes" do
+      calendar_event = calendar_event_fixture()
+      bot = recall_bot_fixture(%{calendar_event_id: calendar_event.id, status: "ready"})
+
+      expect(RecallApiMock, :update_bot, fn _bot_id, _meeting_url, _start_time ->
+        {:ok, %{body: %{id: bot.recall_bot_id}}}
+      end)
+
+      assert {:ok, updated_bot} = Bots.update_bot_schedule(bot, calendar_event)
+      assert updated_bot.status == "ready"
+    end
+
+    test "update_bot_schedule/2 preserves bot status when status_changes is empty" do
+      calendar_event = calendar_event_fixture()
+      bot = recall_bot_fixture(%{calendar_event_id: calendar_event.id, status: "ready"})
+
+      expect(RecallApiMock, :update_bot, fn _bot_id, _meeting_url, _start_time ->
+        {:ok, %{body: %{id: bot.recall_bot_id, status_changes: []}}}
+      end)
+
+      assert {:ok, updated_bot} = Bots.update_bot_schedule(bot, calendar_event)
+      assert updated_bot.status == "ready"
+    end
+
+    test "reschedule_pending_bots_for_user/1 reschedules all pending bots" do
+      user = user_fixture()
+      _pref = user_bot_preference_fixture(%{user_id: user.id, join_minute_offset: 5})
+      calendar_event = calendar_event_fixture(%{user_id: user.id})
+
+      bot =
+        recall_bot_fixture(%{
+          user_id: user.id,
+          calendar_event_id: calendar_event.id,
+          status: "ready"
+        })
+
+      expect(RecallApiMock, :update_bot, fn _bot_id, _meeting_url, start_time ->
+        assert start_time == DateTime.add(calendar_event.start_time, -5, :minute)
+
+        {:ok,
+         %{
+           body: %{
+             id: bot.recall_bot_id,
+             status_changes: [%{code: "ready", message: nil, created_at: "2023-03-23T18:59:40Z"}]
+           }
+         }}
+      end)
+
+      assert :ok = Bots.reschedule_pending_bots_for_user(user.id)
+    end
+
+    test "reschedule_pending_bots_for_user/1 skips done/error bots" do
+      user = user_fixture()
+      calendar_event = calendar_event_fixture(%{user_id: user.id})
+
+      _done_bot =
+        recall_bot_fixture(%{
+          user_id: user.id,
+          calendar_event_id: calendar_event.id,
+          status: "done"
+        })
+
+      # No API call expected — if it were called, Mox would raise
+      assert :ok = Bots.reschedule_pending_bots_for_user(user.id)
+    end
+
+    test "reschedule_pending_bots_for_user/1 returns :ok with no pending bots" do
+      user = user_fixture()
+      assert :ok = Bots.reschedule_pending_bots_for_user(user.id)
+    end
+
+    test "reschedule_pending_bots_for_user/1 continues on API failure for individual bot" do
+      user = user_fixture()
+      calendar_event1 = calendar_event_fixture(%{user_id: user.id})
+      calendar_event2 = calendar_event_fixture(%{user_id: user.id})
+
+      _bot1 =
+        recall_bot_fixture(%{
+          user_id: user.id,
+          calendar_event_id: calendar_event1.id,
+          status: "ready"
+        })
+
+      _bot2 =
+        recall_bot_fixture(%{
+          user_id: user.id,
+          calendar_event_id: calendar_event2.id,
+          status: "ready"
+        })
+
+      # First call fails, second succeeds — both should be attempted
+      expect(RecallApiMock, :update_bot, 2, fn _bot_id, _meeting_url, _start_time ->
+        {:error, "API Error"}
+      end)
+
+      assert :ok = Bots.reschedule_pending_bots_for_user(user.id)
+    end
   end
 
   describe "user_bot_preferences" do
